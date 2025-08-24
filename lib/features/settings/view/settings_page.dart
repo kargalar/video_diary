@@ -25,6 +25,9 @@ class SettingsPage extends StatelessWidget {
             trailing: ElevatedButton(onPressed: vm.pickDirectory, child: const Text('Seç')),
           ),
           const SizedBox(height: 12),
+          SwitchListTile(secondary: const Icon(Icons.dark_mode), title: const Text('Karanlık Tema'), value: state.darkMode, onChanged: (v) => vm.setDarkMode(v)),
+          SwitchListTile(secondary: const Icon(Icons.screen_rotation), title: const Text('Yatay Kayıt'), value: state.landscape, onChanged: (v) => vm.setLandscape(v)),
+          const SizedBox(height: 12),
           ListTile(
             leading: const Icon(Icons.alarm),
             title: const Text('Günlük Hatırlatma Saati'),
@@ -33,7 +36,16 @@ class SettingsPage extends StatelessWidget {
               onPressed: () async {
                 final picked = await showTimePicker(context: context, initialTime: timeOfDay);
                 if (picked != null) {
-                  await vm.setReminder(picked.hour, picked.minute);
+                  try {
+                    await vm.setReminder(picked.hour, picked.minute);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hatırlatma ayarlandı')));
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Bildirim planlanamadı: $e')));
+                    }
+                  }
                 }
               },
               child: const Text('Ayarla'),
