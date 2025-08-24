@@ -82,6 +82,8 @@ class _RecordingPageState extends State<RecordingPage> {
       onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) return;
         final vm = context.read<DiaryViewModel>();
+        // Always restore app orientation to portrait when leaving this page
+        SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
         await vm.disposeCamera();
       },
       child: Scaffold(
@@ -89,6 +91,51 @@ class _RecordingPageState extends State<RecordingPage> {
         resizeToAvoidBottomInset: false,
         appBar: null,
         backgroundColor: Colors.black,
+        floatingActionButton: Builder(
+          builder: (context) {
+            final isRec = vm.isRecording;
+            return FloatingActionButton.small(
+              backgroundColor: isRec ? Colors.red : Colors.green,
+              tooltip: isRec ? 'Durdur' : 'Kaydı Başlat',
+              child: Icon(isRec ? Icons.stop : Icons.fiber_manual_record),
+              onPressed: () async {
+                final nav = Navigator.of(context);
+                if (!vm.isRecording) {
+                  await vm.startRecording();
+                  if (!mounted) return;
+                  setState(() {});
+                } else {
+                  final filePath = await vm.stopRecording();
+                  if (!context.mounted) return;
+                  if (filePath != null) {
+                    // Force portrait immediately after recording ends
+                    await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+                    if (!context.mounted) return;
+                    final res = await _askTitleAndRating(context);
+                    if (res != null) {
+                      final t = res.title.trim();
+                      if (t.isNotEmpty) {
+                        await vm.renameLastRecordingWithTitle(t);
+                      }
+                      if (res.rating != null && res.rating! > 0) {
+                        // Set rating on the latest entry (just saved)
+                        final latestPath = vm.entries.isNotEmpty ? vm.entries.first.path : null;
+                        if (latestPath != null) {
+                          await vm.setRatingForEntry(latestPath, res.rating!.clamp(1, 5));
+                        }
+                      }
+                      if (res.moods.isNotEmpty) {
+                        await vm.addMoodsForDay(DateTime.now(), res.moods);
+                      }
+                    }
+                  }
+                  await vm.disposeCamera();
+                  nav.pop();
+                }
+              },
+            );
+          },
+        ),
         body: Stack(
           children: [
             Positioned.fill(
@@ -137,6 +184,8 @@ class _RecordingPageState extends State<RecordingPage> {
                           final nav = Navigator.of(context);
                           await vm.disposeCamera();
                           if (!mounted) return;
+                          // Restore portrait before navigating back
+                          await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
                           nav.pop();
                         },
                       ),
@@ -161,53 +210,7 @@ class _RecordingPageState extends State<RecordingPage> {
                 right: 16,
                 child: SafeArea(bottom: false, child: _RecordingTimer(startedAt: vm.recordingStartedAt)),
               ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 24,
-              child: Center(
-                child: ElevatedButton.icon(
-                  icon: Icon(vm.isRecording ? Icons.stop : Icons.fiber_manual_record),
-                  label: Text(vm.isRecording ? 'Durdur' : 'Kaydı Başlat'),
-                  style: ElevatedButton.styleFrom(backgroundColor: vm.isRecording ? Colors.red : Colors.green, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14), shape: const StadiumBorder()),
-                  onPressed: () async {
-                    final nav = Navigator.of(context);
-                    if (!vm.isRecording) {
-                      await vm.startRecording();
-                      if (!mounted) return;
-                      setState(() {});
-                    } else {
-                      final filePath = await vm.stopRecording();
-                      if (!context.mounted) return;
-                      if (filePath != null) {
-                        // Force portrait immediately after recording ends
-                        await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-                        if (!context.mounted) return;
-                        final res = await _askTitleAndRating(context);
-                        if (res != null) {
-                          final t = res.title.trim();
-                          if (t.isNotEmpty) {
-                            await vm.renameLastRecordingWithTitle(t);
-                          }
-                          if (res.rating != null && res.rating! > 0) {
-                            // Set rating on the latest entry (just saved)
-                            final latestPath = vm.entries.isNotEmpty ? vm.entries.first.path : null;
-                            if (latestPath != null) {
-                              await vm.setRatingForEntry(latestPath, res.rating!.clamp(1, 5));
-                            }
-                          }
-                          if (res.moods.isNotEmpty) {
-                            await vm.addMoodsForDay(DateTime.now(), res.moods);
-                          }
-                        }
-                      }
-                      await vm.disposeCamera();
-                      nav.pop();
-                    }
-                  },
-                ),
-              ),
-            ),
+            // Removed the large centered start/stop button; using small FAB at bottom-right instead
           ],
         ),
       ),
