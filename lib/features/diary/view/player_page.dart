@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 class PlayerPageArgs {
@@ -39,13 +38,6 @@ class _PlayerPageState extends State<PlayerPage> {
       final c = VideoPlayerController.file(file);
       await c.initialize();
       await c.setLooping(false);
-      // Lock orientation based on video aspect ratio
-      final ar = c.value.aspectRatio; // width / height
-      if (ar >= 1) {
-        await SystemChrome.setPreferredOrientations(const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
-      } else {
-        await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-      }
       setState(() => _controller = c);
       await c.play();
     } catch (_) {
@@ -56,8 +48,6 @@ class _PlayerPageState extends State<PlayerPage> {
   @override
   void dispose() {
     _controller?.dispose();
-    // Restore all orientations
-    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown, DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
     super.dispose();
   }
 
@@ -65,7 +55,7 @@ class _PlayerPageState extends State<PlayerPage> {
   Widget build(BuildContext context) {
     final title = widget.args.title ?? 'Video';
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: null,
       backgroundColor: Colors.black,
       body: _isError
           ? const Center(
@@ -80,6 +70,35 @@ class _PlayerPageState extends State<PlayerPage> {
                     child: FittedBox(
                       fit: BoxFit.cover, // fill screen, preserve aspect ratio
                       child: SizedBox(width: _controller!.value.size.width, height: _controller!.value.size.height, child: VideoPlayer(_controller!)),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 8,
+                  right: 8,
+                  top: 8,
+                  child: SafeArea(
+                    bottom: false,
+                    child: Row(
+                      children: [
+                        Material(
+                          color: Colors.black45,
+                          shape: const CircleBorder(),
+                          child: IconButton(
+                            icon: const Icon(Icons.arrow_back, color: Colors.white),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white70, fontSize: 16),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -141,7 +160,7 @@ class _ControlsState extends State<_Controls> {
       top: false,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        color: Colors.black,
+        color: Colors.transparent, // transparent overlay over video
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -170,7 +189,7 @@ class _ControlsState extends State<_Controls> {
                         min: 0,
                         max: 1,
                         activeColor: Colors.white,
-                        inactiveColor: Colors.white24,
+                        inactiveColor: Colors.white38,
                         onChangeStart: (_) => setState(() => _seeking = true),
                         onChanged: (v) => setState(() => _sliderValue = v),
                         onChangeEnd: (v) async {

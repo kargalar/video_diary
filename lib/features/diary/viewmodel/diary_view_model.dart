@@ -10,6 +10,7 @@ import '../../../services/storage_service.dart';
 import '../../../services/video_service.dart';
 import '../../settings/data/settings_repository.dart';
 import '../data/diary_repository.dart';
+import '../data/day_data_repository.dart';
 import '../model/diary_entry.dart';
 
 class DiaryViewModel extends ChangeNotifier {
@@ -17,15 +18,42 @@ class DiaryViewModel extends ChangeNotifier {
   final SettingsRepository _settingsRepo = SettingsRepository();
   final StorageService _storage = StorageService();
   final VideoService _video = VideoService();
+  final DayDataRepository _dayRepo = DayDataRepository();
 
   List<DiaryEntry> _entries = [];
   List<DiaryEntry> get entries => _entries;
 
+  // Daily average rating 1..5
+  Map<String, int> _dailyRatings = {};
+  Map<String, int> get dailyRatings => _dailyRatings;
+  // Multiple moods per day
+  Map<String, List<String>> _dailyMoods = {}; // key: yyyy-MM-dd -> list of moods
+  Map<String, List<String>> get dailyMoods => _dailyMoods;
+
+  // Streak state
+  int _currentStreak = 0;
+  int _maxStreak = 0;
+  DateTime? _lastRecordedDay; // date-only
+  int get currentStreak => _currentStreak;
+  int get maxStreak => _maxStreak;
+  DateTime? get lastRecordedDay => _lastRecordedDay;
+
   bool _isRecording = false;
   bool get isRecording => _isRecording;
+  DateTime? _recordingStartedAt;
+  DateTime? get recordingStartedAt => _recordingStartedAt;
 
   Future<void> load() async {
     _entries = await _repo.load();
+    await _dayRepo.init();
+    // Load existing hive day data
+    final all = await _dayRepo.getAll();
+    _dailyRatings = {
+      for (final e in all.entries)
+        if (e.value.rating != null) e.key: e.value.rating!,
+    };
+    _dailyMoods = {for (final e in all.entries) e.key: e.value.moods};
+    _recomputeStreak();
     notifyListeners();
   }
 
@@ -58,6 +86,7 @@ class DiaryViewModel extends ChangeNotifier {
     }
     await _video.startRecording(filePath);
     _isRecording = true;
+    _recordingStartedAt = DateTime.now();
     notifyListeners();
   }
 
@@ -75,6 +104,7 @@ class DiaryViewModel extends ChangeNotifier {
 
     await _video.stopRecordingTo(filePath);
     _isRecording = false;
+    _recordingStartedAt = null;
     final file = File(filePath);
     final bytes = await file.length();
     final thumbPath = await vt.VideoThumbnail.thumbnailFile(video: filePath, imageFormat: vt.ImageFormat.PNG, maxHeight: 200, quality: 70);
@@ -83,8 +113,54 @@ class DiaryViewModel extends ChangeNotifier {
     final entry = DiaryEntry(path: filePath, date: DateTime.now(), thumbnailPath: thumbPath, durationMs: durMs, fileBytes: bytes);
     _entries = [entry, ..._entries];
     await _repo.save(_entries);
+    _recomputeStreak();
     notifyListeners();
     return filePath;
+  }
+
+  // Per-entry rating and daily average helpers
+  Future<void> setRatingForEntry(String path, int rating) async {
+    final idx = _entries.indexWhere((e) => e.path == path);
+    if (idx == -1) return;
+    final old = _entries[idx];
+    _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, rating: rating.clamp(1, 5));
+    await _repo.save(_entries);
+    await _recomputeDailyAverageForDay(old.date);
+    notifyListeners();
+  }
+
+  int? getDailyAverageRating(DateTime day) => _dailyRatings[_keyFor(day)];
+
+  Future<void> clearRatingsForDay(DateTime day) async {
+    // Clear average and also remove per-entry ratings for that day
+    final key = _keyFor(day);
+    await _dayRepo.clearRating(day);
+    for (var i = 0; i < _entries.length; i++) {
+      final e = _entries[i];
+      if (_keyFor(e.date) == key && e.rating != null) {
+        _entries[i] = DiaryEntry(path: e.path, date: e.date, thumbnailPath: e.thumbnailPath, durationMs: e.durationMs, fileBytes: e.fileBytes, title: e.title, rating: null);
+      }
+    }
+    await _repo.save(_entries);
+    _dailyRatings.remove(key);
+    notifyListeners();
+  }
+
+  Future<void> setMoodsForDay(DateTime day, List<String> moods) async {
+    await _dayRepo.setMoods(day, moods);
+    _dailyMoods = {..._dailyMoods, _keyFor(day): List<String>.from(moods)};
+    notifyListeners();
+  }
+
+  List<String> getMoodsForDay(DateTime day) => _dailyMoods[_keyFor(day)] ?? const [];
+
+  Future<void> addMoodsForDay(DateTime day, List<String> moods) async {
+    if (moods.isEmpty) return;
+    await _dayRepo.addMoods(day, moods);
+    final key = _keyFor(day);
+    final merged = {...(_dailyMoods[key] ?? const <String>[]), ...moods}.toList();
+    _dailyMoods = {..._dailyMoods, key: merged};
+    notifyListeners();
   }
 
   String _fileNameFor(DateTime date) {
@@ -115,12 +191,164 @@ class DiaryViewModel extends ChangeNotifier {
     final newPath = '$dir${Platform.pathSeparator}$newName';
     try {
       await oldFile.rename(newPath);
-      final updated = DiaryEntry(path: newPath, date: latest.date, thumbnailPath: latest.thumbnailPath, durationMs: latest.durationMs, fileBytes: latest.fileBytes, title: title);
+      final updated = DiaryEntry(path: newPath, date: latest.date, thumbnailPath: latest.thumbnailPath, durationMs: latest.durationMs, fileBytes: latest.fileBytes, title: title, rating: latest.rating);
       _entries[0] = updated;
       await _repo.save(_entries);
       notifyListeners();
     } catch (_) {
       // ignore
     }
+  }
+
+  Future<void> disposeCamera() async {
+    await _video.dispose();
+  }
+
+  Future<bool> renameByPath(String path, String newTitle) async {
+    try {
+      final idx = _entries.indexWhere((e) => e.path == path);
+      if (idx == -1) return false;
+      final old = _entries[idx];
+      final oldFile = File(old.path);
+      if (!await oldFile.exists()) {
+        // Still update title in list if file missing
+        _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle);
+        await _repo.save(_entries);
+        notifyListeners();
+        return true;
+      }
+      final dir = oldFile.parent.path;
+      final stamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(old.date);
+      final safeTitle = newTitle.replaceAll(RegExp(r'[^\w\- ]+'), '').replaceAll(' ', '_');
+      final newName = 'diary_${stamp}_$safeTitle.mp4';
+      final newPath = '$dir${Platform.pathSeparator}$newName';
+      await oldFile.rename(newPath);
+      _entries[idx] = DiaryEntry(path: newPath, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle, rating: old.rating);
+      await _repo.save(_entries);
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteByPath(String path) async {
+    try {
+      final idx = _entries.indexWhere((e) => e.path == path);
+      if (idx == -1) return false;
+      final e = _entries[idx];
+      // Attempt to delete files
+      try {
+        final f = File(e.path);
+        if (await f.exists()) {
+          await f.delete();
+        }
+      } catch (_) {}
+      try {
+        final t = e.thumbnailPath;
+        if (t != null) {
+          final tf = File(t);
+          if (await tf.exists()) {
+            await tf.delete();
+          }
+        }
+      } catch (_) {}
+      _entries.removeAt(idx);
+      await _repo.save(_entries);
+      await _recomputeDailyAverageForDay(e.date);
+      _recomputeStreak();
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // --- Streak helpers ---
+  void _recomputeStreak() {
+    if (_entries.isEmpty) {
+      _currentStreak = 0;
+      _maxStreak = 0;
+      _lastRecordedDay = null;
+      return;
+    }
+    // Build unique day set from entries
+    final uniqueDays = <DateTime>{};
+    for (final e in _entries) {
+      uniqueDays.add(_dateOnly(e.date));
+    }
+    final days = uniqueDays.toList()..sort((a, b) => b.compareTo(a)); // desc
+    _lastRecordedDay = days.first;
+
+    // Current streak: count consecutive days starting from today or yesterday
+    final today = _dateOnly(DateTime.now());
+    int cur = 0;
+    DateTime? anchor;
+    if (days.contains(today)) {
+      anchor = today;
+    } else {
+      final yesterday = today.subtract(const Duration(days: 1));
+      if (days.contains(yesterday)) {
+        anchor = yesterday;
+      }
+    }
+    if (anchor != null) {
+      cur = 1;
+      var next = anchor.subtract(const Duration(days: 1));
+      while (days.contains(next)) {
+        cur += 1;
+        next = next.subtract(const Duration(days: 1));
+      }
+    } else {
+      cur = 0;
+    }
+    _currentStreak = cur;
+
+    // Max streak across all days
+    int best = 0;
+    int run = 0;
+    DateTime? prev;
+    for (final d in days.reversed) {
+      // ascending
+      if (prev == null) {
+        run = 1;
+      } else if (d.difference(prev).inDays == 1) {
+        run += 1;
+      } else if (d == prev) {
+        // same day won't happen due to uniqueness, but keep for safety
+      } else {
+        if (run > best) best = run;
+        run = 1;
+      }
+      prev = d;
+    }
+    if (run > best) best = run;
+    _maxStreak = best;
+  }
+
+  Future<void> _recomputeDailyAverageForDay(DateTime day) async {
+    final key = _keyFor(day);
+    final sameDay = _entries.where((e) => _keyFor(e.date) == key && (e.rating ?? 0) > 0).toList();
+    if (sameDay.isEmpty) {
+      _dailyRatings.remove(key);
+      await _dayRepo.clearRating(day);
+      return;
+    }
+    final avg = (sameDay.map((e) => e.rating!).reduce((a, b) => a + b) / sameDay.length).round();
+    _dailyRatings[key] = avg;
+    await _dayRepo.setRating(day, avg);
+  }
+
+  Future<void> setDailyAverageRating(DateTime day, int rating) async {
+    final key = _keyFor(day);
+    _dailyRatings[key] = rating.clamp(1, 5);
+    await _dayRepo.setRating(day, rating.clamp(1, 5));
+    notifyListeners();
+  }
+
+  DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+  String _keyFor(DateTime d) {
+    final dd = _dateOnly(d);
+    return '${dd.year}-${dd.month.toString().padLeft(2, '0')}-${dd.day.toString().padLeft(2, '0')}';
   }
 }
