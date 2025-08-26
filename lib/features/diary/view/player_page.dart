@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 class PlayerPageArgs {
@@ -21,6 +22,7 @@ class PlayerPage extends StatefulWidget {
 class _PlayerPageState extends State<PlayerPage> {
   VideoPlayerController? _controller;
   bool _isError = false;
+  bool _forcedLandscape = false;
 
   @override
   void initState() {
@@ -38,6 +40,11 @@ class _PlayerPageState extends State<PlayerPage> {
       final c = VideoPlayerController.file(file);
       await c.initialize();
       await c.setLooping(false);
+      // If the video is landscape, rotate the UI to landscape for better viewing
+      if ((Platform.isAndroid || Platform.isIOS) && c.value.size.width > c.value.size.height) {
+        await SystemChrome.setPreferredOrientations(const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+        _forcedLandscape = true;
+      }
       setState(() => _controller = c);
       await c.play();
     } catch (_) {
@@ -48,6 +55,10 @@ class _PlayerPageState extends State<PlayerPage> {
   @override
   void dispose() {
     _controller?.dispose();
+    if (_forcedLandscape) {
+      // Restore app-wide portrait lock when leaving the player
+      SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+    }
     super.dispose();
   }
 

@@ -43,7 +43,7 @@ class SettingsPage extends StatelessWidget {
                     }
                   } catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Bildirim planlanamadı: $e')));
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bildirim planlanamadı. Lütfen daha sonra tekrar deneyin.')));
                     }
                   }
                 }

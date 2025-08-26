@@ -275,13 +275,29 @@ class _DayCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Heatmap by rating; streak has priority
+    // Color by rating (explicit mapping to avoid overflow UI with stars)
+    // Priority: streak > rating color > hasEntries > empty
     Color bg;
     if (inStreak) {
       bg = theme.colorScheme.secondaryContainer;
     } else if ((rating ?? 0) > 0) {
-      final t = ((rating ?? 0) / 5.0).clamp(0.0, 1.0);
-      bg = Color.lerp(theme.colorScheme.surface, theme.colorScheme.primaryContainer, t) ?? theme.colorScheme.primaryContainer;
+      switch (rating) {
+        case 5:
+          bg = Colors.green.withValues(alpha: 0.35);
+          break;
+        case 4:
+          bg = Colors.lightGreen.withValues(alpha: 0.35);
+          break;
+        case 3:
+          bg = Colors.amber.withValues(alpha: 0.35);
+          break;
+        case 2:
+          bg = Colors.deepOrange.withValues(alpha: 0.30);
+          break;
+        case 1:
+        default:
+          bg = Colors.purple.withValues(alpha: 0.30);
+      }
     } else if (hasEntries) {
       bg = theme.colorScheme.primaryContainer;
     } else {
@@ -313,8 +329,7 @@ class _DayCell extends StatelessWidget {
                 ],
               ),
               const Spacer(),
-              if (moods.isNotEmpty) Wrap(spacing: 2, runSpacing: 0, children: moods.take(4).map((m) => Text(_moodEmoji(m), style: const TextStyle(fontSize: 14))).toList()),
-              if ((rating ?? 0) > 0) Row(children: [for (int i = 1; i <= 5; i++) Icon(i <= (rating ?? 0) ? Icons.star : Icons.star_border, size: 14, color: Colors.amber)]),
+              if (moods.isNotEmpty) Wrap(spacing: 1, runSpacing: 0, children: moods.take(4).map((m) => Text(_moodEmoji(m), style: const TextStyle(fontSize: 10))).toList()),
             ],
           ),
         ),

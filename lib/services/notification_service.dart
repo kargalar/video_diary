@@ -10,6 +10,8 @@ class NotificationService {
 
   final _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  static const String _channelId = 'daily_video_diary_v2';
+  static const String _channelName = 'Daily Reminder';
 
   Future<void> init() async {
     if (_initialized) return;
@@ -17,6 +19,10 @@ class NotificationService {
     const iOS = DarwinInitializationSettings();
     const initSettings = InitializationSettings(android: android, iOS: iOS);
     await _plugin.initialize(initSettings);
+
+    // Ensure Android channel exists (some OEMs/Release builds can be picky)
+    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.createNotificationChannel(const AndroidNotificationChannel(_channelId, _channelName, description: 'Daily reminder to record your video diary', importance: Importance.max));
 
     // timezone init
     try {
@@ -32,7 +38,7 @@ class NotificationService {
 
   Future<void> scheduleDaily(int hour, int minute) async {
     final details = NotificationDetails(
-      android: const AndroidNotificationDetails('daily_video_diary', 'Daily Reminder', channelDescription: 'Daily reminder to record your video diary', importance: Importance.max, priority: Priority.high),
+      android: const AndroidNotificationDetails(_channelId, _channelName, channelDescription: 'Daily reminder to record your video diary', importance: Importance.max, priority: Priority.high),
       iOS: const DarwinNotificationDetails(),
     );
 
@@ -43,43 +49,27 @@ class NotificationService {
     }
 
     await _ensureAndroidPermissions();
-    try {
-      await _plugin.cancel(1001);
-      await _plugin.zonedSchedule(
-        1001,
-        'Video Günlüğü',
-        'Günün videosunu çekmeyi unutma',
-        scheduled,
-        details,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.time,
-      );
-    } catch (_) {
-      // Fallback to inexact scheduling if exact alarm permission is restricted
-      await _plugin.cancel(1001);
-      await _plugin.zonedSchedule(
-        1001,
-        'Video Günlüğü',
-        'Günün videosunu çekmeyi unutma',
-        scheduled,
-        details,
-        androidScheduleMode: AndroidScheduleMode.inexact,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.time,
-      );
-    }
+    // Prefer inexact scheduling to avoid exact alarm restrictions; still repeats daily at selected time
+    await _plugin.cancel(1001);
+    await _plugin.zonedSchedule(1001, 'Video Günlüğü', 'Günün videosunu çekmeyi unutma', scheduled, details, androidScheduleMode: AndroidScheduleMode.inexact, uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime, matchDateTimeComponents: DateTimeComponents.time);
   }
 
   Future<void> cancelAll() => _plugin.cancelAll();
+
+  Future<Map<String, dynamic>> diagnostics() async {
+    final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    bool? notifEnabled;
+    try {
+      notifEnabled = await android?.areNotificationsEnabled();
+    } catch (_) {}
+    return {'initialized': _initialized, 'timezone': tz.local.name, 'androidNotificationsEnabled': notifEnabled, 'channelId': _channelId};
+  }
 
   Future<void> _ensureAndroidPermissions() async {
     final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     try {
       await android?.requestNotificationsPermission();
     } catch (_) {}
-    try {
-      await android?.requestExactAlarmsPermission();
-    } catch (_) {}
+    // Do not prompt for exact alarm; we schedule in inexact mode by default
   }
 }
