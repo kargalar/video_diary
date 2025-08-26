@@ -8,7 +8,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <application
-        android:label="📝 Video Diary"
+        android:label="Video Diary"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
