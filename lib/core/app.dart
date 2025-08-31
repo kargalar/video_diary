@@ -34,11 +34,57 @@ class VideoDiaryApp extends StatelessWidget {
             useMaterial3: true,
           ),
           themeMode: settings.state.darkMode ? ThemeMode.dark : ThemeMode.light,
-          routes: {'/': (_) => const DiaryPage(), SettingsPage.route: (_) => const SettingsPage(), RecordingPage.route: (_) => const RecordingPage(), CalendarPage.route: (_) => const CalendarPage()},
+          routes: {'/': (_) => const DiaryPage()},
           onGenerateRoute: (settingsRoute) {
             if (settingsRoute.name == PlayerPage.route && settingsRoute.arguments is PlayerPageArgs) {
               final args = settingsRoute.arguments as PlayerPageArgs;
-              return MaterialPageRoute(builder: (_) => PlayerPage(args: args));
+              return PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => PlayerPage(args: args),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  const begin = Offset(1.0, 0.0);
+                  const end = Offset.zero;
+                  const curve = Curves.easeInOut;
+                  var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                  var offsetAnimation = animation.drive(tween);
+                  return SlideTransition(position: offsetAnimation, child: child);
+                },
+              );
+            } else if (settingsRoute.name == CalendarPage.route) {
+              return PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => const CalendarPage(),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  const begin = Offset(0.0, 1.0);
+                  const end = Offset.zero;
+                  const curve = Curves.easeInOut;
+                  var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                  var offsetAnimation = animation.drive(tween);
+                  return SlideTransition(position: offsetAnimation, child: child);
+                },
+              );
+            } else if (settingsRoute.name == RecordingPage.route) {
+              return PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => const RecordingPage(),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  const begin = Offset(0.0, -1.0);
+                  const end = Offset.zero;
+                  const curve = Curves.easeInOut;
+                  var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                  var offsetAnimation = animation.drive(tween);
+                  return SlideTransition(position: offsetAnimation, child: child);
+                },
+              );
+            } else if (settingsRoute.name == SettingsPage.route) {
+              return PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => const SettingsPage(),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  const begin = Offset(-1.0, 0.0);
+                  const end = Offset.zero;
+                  const curve = Curves.easeInOut;
+                  var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                  var offsetAnimation = animation.drive(tween);
+                  return SlideTransition(position: offsetAnimation, child: child);
+                },
+              );
             }
             return null;
           },

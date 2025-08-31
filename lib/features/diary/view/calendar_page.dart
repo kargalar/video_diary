@@ -78,7 +78,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 },
               ),
             ),
-            _Legend(),
+            // _Legend() kaldırıldı, tasarım bozuyordu
           ],
         ),
       ),
@@ -352,41 +352,5 @@ class _DayCell extends StatelessWidget {
       default:
         return '🙂';
     }
-  }
-}
-
-class _Legend extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    Widget dot(Color c, String t) => Row(
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(3)),
-        ),
-        const SizedBox(width: 6),
-        Text(t),
-      ],
-    );
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          dot(theme.colorScheme.secondaryContainer, 'Streak'),
-          dot(theme.colorScheme.primaryContainer, 'Kayıt var'),
-          Row(
-            children: [
-              const Icon(Icons.star, size: 14, color: Colors.amber),
-              const SizedBox(width: 4),
-              const Text('Gün Puanı'),
-            ],
-          ),
-          Row(children: [const Icon(Icons.circle_outlined, size: 14), const SizedBox(width: 4), const Text('Bugün')]),
-        ],
-      ),
-    );
   }
 }
