@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
+import 'package:share_plus/share_plus.dart';
 
 class PlayerPageArgs {
   final String path;
@@ -229,6 +230,17 @@ class _PlayerPageState extends State<PlayerPage> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(color: Colors.white70, fontSize: 16),
+                              ),
+                            ),
+                            Material(
+                              color: Colors.black45,
+                              shape: const CircleBorder(),
+                              child: IconButton(
+                                icon: const Icon(Icons.share, color: Colors.white),
+                                onPressed: () async {
+                                  final file = File(widget.args.path);
+                                  await Share.shareXFiles([XFile(file.path)], text: title);
+                                },
                               ),
                             ),
                           ],

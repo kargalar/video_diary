@@ -22,4 +22,4 @@ video kaydettikten sonra bir bozukluk oluyor.
 
 takvimi sağa sola kaydırarak da gidlisn.
 
-paylaşma seçeneği
+video çektikten sonrada başlığın adı edit. save olmalı ve save butonu göterilmeli. save yapmadan bottomsheeti kapamak isterse video silinecek diye uyarmalıç
