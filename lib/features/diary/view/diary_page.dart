@@ -5,6 +5,8 @@ import '../model/mood.dart';
 import '../../settings/view/settings_page.dart';
 import '../viewmodel/diary_view_model.dart';
 import 'recording_page.dart';
+import 'widgets/compact_calendar.dart';
+import 'widgets/video_grid_item.dart';
 import 'widgets/video_item.dart';
 import 'widgets/streak_banner.dart';
 import 'widgets/video_dialogs.dart';
@@ -29,20 +31,25 @@ class _DiaryPageState extends State<DiaryPage> {
   Widget build(BuildContext context) {
     final vm = context.watch<DiaryViewModel>();
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daily', style: TextStyle(fontWeight: FontWeight.w300, letterSpacing: 1.2)),
-        elevation: 0,
-        actions: [
-          IconButton(tooltip: 'Calendar', icon: const Icon(Icons.calendar_today_outlined, size: 20), onPressed: () => Navigator.of(context).pushNamed('/calendar')),
-          IconButton(tooltip: 'Settings', icon: const Icon(Icons.settings_outlined, size: 20), onPressed: () => Navigator.of(context).pushNamed(SettingsPage.route)),
-          const SizedBox(width: 8),
-        ],
-      ),
       body: Column(
         children: [
-          // Streak banner - minimalist version
-          StreakBanner(current: vm.currentStreak, max: vm.maxStreak),
-          Expanded(child: _DiaryList(entries: vm.entries)),
+          // Streak banner with settings button
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 48, 16, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: StreakBanner(current: vm.currentStreak, max: vm.maxStreak),
+                ),
+                const SizedBox(width: 12),
+                IconButton(tooltip: 'Settings', icon: const Icon(Icons.settings_outlined, size: 24), onPressed: () => Navigator.of(context).pushNamed(SettingsPage.route)),
+              ],
+            ),
+          ),
+          // Compact calendar
+          CompactCalendar(entries: vm.entries, currentStreak: vm.currentStreak, vm: vm),
+          // Videos grid
+          Expanded(child: _DiaryGrid(entries: vm.entries)),
         ],
       ),
       floatingActionButton: Padding(
@@ -109,8 +116,78 @@ class _DiaryPageState extends State<DiaryPage> {
   }
 }
 
-// removed inline record bar; recording happens on RecordingPage
+// Grid view for videos
+class _DiaryGrid extends StatefulWidget {
+  final List<dynamic> entries;
+  const _DiaryGrid({required this.entries});
 
+  @override
+  State<_DiaryGrid> createState() => _DiaryGridState();
+}
+
+class _DiaryGridState extends State<_DiaryGrid> {
+  @override
+  Widget build(BuildContext context) {
+    if (widget.entries.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.video_library_outlined, size: 64, color: Colors.grey[300]),
+            const SizedBox(height: 16),
+            Text(
+              'No recordings yet',
+              style: TextStyle(fontSize: 16, color: Colors.grey[500], fontWeight: FontWeight.w300, letterSpacing: 0.5),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final vm = context.read<DiaryViewModel>();
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 0.75),
+      itemCount: widget.entries.length,
+      itemBuilder: (ctx, i) {
+        final e = widget.entries[i];
+        return VideoGridItem(
+          entry: e,
+          onEdit: (updates) async {
+            final path = e.path as String;
+            final title = e.title as String?;
+            final newTitle = updates['title'] as String;
+            final newRating = updates['rating'] as int?;
+            final newMoods = updates['moods'] as List<Mood>;
+
+            if (newTitle != title) {
+              await vm.renameByPath(path, newTitle);
+            }
+
+            if (newRating != (e.rating as int?)) {
+              if (newRating != null) {
+                await vm.setRatingForEntry(path, newRating);
+              }
+            }
+
+            final currentMoods = (e.moods as List<Mood>?) ?? [];
+            if (newMoods.toSet().difference(currentMoods.toSet()).isNotEmpty || currentMoods.toSet().difference(newMoods.toSet()).isNotEmpty) {
+              await vm.setMoodsForEntry(path, newMoods);
+            }
+          },
+          onDelete: () async {
+            final ok = await VideoDialogs.showDeleteConfirmation(context);
+            if (ok == true) {
+              await vm.deleteByPath(e.path as String);
+            }
+          },
+        );
+      },
+    );
+  }
+}
+
+// Legacy list view - kept for reference, not used
 class _DiaryList extends StatefulWidget {
   final List<dynamic> entries; // DiaryEntry list but keep loose to avoid import
   const _DiaryList({required this.entries});

@@ -6,7 +6,6 @@ import '../features/diary/viewmodel/diary_view_model.dart';
 import '../features/settings/view/settings_page.dart';
 import '../features/diary/view/recording_page.dart';
 import '../features/diary/view/player_page.dart';
-import '../features/diary/view/calendar_page.dart';
 import '../features/settings/viewmodel/settings_view_model.dart';
 import '../features/diary/data/day_data_repository.dart';
 
@@ -82,18 +81,6 @@ class VideoDiaryApp extends StatelessWidget {
                 pageBuilder: (context, animation, secondaryAnimation) => PlayerPage(args: args),
                 transitionsBuilder: (context, animation, secondaryAnimation, child) {
                   const begin = Offset(1.0, 0.0);
-                  const end = Offset.zero;
-                  const curve = Curves.easeInOut;
-                  var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                  var offsetAnimation = animation.drive(tween);
-                  return SlideTransition(position: offsetAnimation, child: child);
-                },
-              );
-            } else if (settingsRoute.name == CalendarPage.route) {
-              return PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) => const CalendarPage(),
-                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                  const begin = Offset(0.0, 1.0);
                   const end = Offset.zero;
                   const curve = Curves.easeInOut;
                   var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));

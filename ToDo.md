@@ -10,5 +10,8 @@ videonunu boyutu bilgisi ayarlardan açılıp kapatılabilsin.
 
 streak şeyisi çok daha compact olsun. next leeldeki gibi
 
+bir de not kısmı ekle onu da göster belki.
 
 mood ve puan video çektikten sonra kaydedilmyor.
+
+tüm metinler ingilzice
