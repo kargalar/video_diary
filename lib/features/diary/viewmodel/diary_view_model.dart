@@ -136,6 +136,7 @@ class DiaryViewModel extends ChangeNotifier {
     final old = _entries[idx];
     _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, rating: old.rating, moods: moods);
     await _repo.save(_entries);
+    await _recomputeDailyMoodsForDay(old.date);
     notifyListeners();
   }
 
@@ -391,6 +392,28 @@ class DiaryViewModel extends ChangeNotifier {
     final avg = (sameDay.map((e) => e.rating!).reduce((a, b) => a + b) / sameDay.length).round();
     _dailyRatings[key] = avg;
     await _dayRepo.setRating(day, avg);
+  }
+
+  Future<void> _recomputeDailyMoodsForDay(DateTime day) async {
+    final key = _keyFor(day);
+    final sameDay = _entries.where((e) => _keyFor(e.date) == key).toList();
+
+    // Collect all moods for this day
+    final allMoods = <String>{};
+    for (final entry in sameDay) {
+      if (entry.moods != null && entry.moods!.isNotEmpty) {
+        allMoods.addAll(entry.moods!.map((m) => m.name));
+      }
+    }
+
+    if (allMoods.isEmpty) {
+      _dailyMoods.remove(key);
+      await _dayRepo.setMoods(day, []);
+    } else {
+      final moodList = allMoods.toList();
+      _dailyMoods[key] = moodList;
+      await _dayRepo.setMoods(day, moodList);
+    }
   }
 
   Future<void> setDailyAverageRating(DateTime day, int rating) async {

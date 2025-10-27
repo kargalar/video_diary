@@ -16,10 +16,6 @@ arka kamera açılsın??
 
 video kayderken ve izlerken ekran dönmeden yapabilri miyiz.
 
-video çekerken geri tuşuna basınca kayıt devam ediyor. düzelt.
-
 video kaydettikten sonra bir bozukluk oluyor.
 
 takvimi sağa sola kaydırarak da gidlisn.
-
-video çektikten sonrada başlığın adı edit. save olmalı ve save butonu göterilmeli. save yapmadan bottomsheeti kapamak isterse video silinecek diye uyarmalıç

@@ -10,8 +10,9 @@ class VideoEditBottomSheet extends StatefulWidget {
   final List<Mood> currentMoods;
   final bool showDeleteButton;
   final DateTime? currentDate;
+  final bool isNewVideo;
 
-  const VideoEditBottomSheet({super.key, required this.currentTitle, this.currentRating, required this.currentMoods, this.showDeleteButton = false, this.currentDate});
+  const VideoEditBottomSheet({super.key, required this.currentTitle, this.currentRating, required this.currentMoods, this.showDeleteButton = false, this.currentDate, this.isNewVideo = false});
 
   @override
   State<VideoEditBottomSheet> createState() => _VideoEditBottomSheetState();
@@ -47,9 +48,31 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
     final theme = Theme.of(context);
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
+      onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
-          Navigator.of(context).pop(_getResult());
+          if (widget.isNewVideo) {
+            // Show warning dialog for new videos
+            final shouldClose = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Discard video?'),
+                content: const Text('If you close without saving, the video will be deleted.'),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    child: const Text('Discard'),
+                  ),
+                ],
+              ),
+            );
+            if (shouldClose == true && context.mounted) {
+              Navigator.of(context).pop({'discard': true});
+            }
+          } else {
+            Navigator.of(context).pop(_getResult());
+          }
         }
       },
       child: Container(
@@ -66,8 +89,32 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('Edit Diary', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w500, letterSpacing: 0.5)),
+                    child: Text(widget.isNewVideo ? 'Save Video' : 'Edit Diary', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w500, letterSpacing: 0.5)),
                   ),
+                  if (widget.isNewVideo)
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () async {
+                        final shouldClose = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Discard video?'),
+                            content: const Text('If you close without saving, the video will be deleted.'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                child: const Text('Discard'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (shouldClose == true && context.mounted) {
+                          Navigator.of(context).pop({'discard': true});
+                        }
+                      },
+                    ),
                 ],
               ),
             ),
@@ -198,30 +245,47 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
               ),
             ),
             // Action buttons
-            if (widget.showDeleteButton)
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.pop(context, {'delete': true});
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.red),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: const Text(
-                        'Delete',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: Colors.red),
-                      ),
-                    ),
-                  ),
-                ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: widget.isNewVideo
+                    ? SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context, _getResult());
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2C2C2C),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: const Text('Save', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
+                        ),
+                      )
+                    : widget.showDeleteButton
+                    ? SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.pop(context, {'delete': true});
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.red),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: const Text(
+                            'Delete',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: Colors.red),
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
               ),
+            ),
           ],
         ),
       ),

@@ -52,31 +52,34 @@ class BottomActionButtons extends StatelessWidget {
                     canPop: false,
                     child: SizedBox(
                       height: MediaQuery.of(context).size.height * 0.7,
-                      child: VideoEditBottomSheet(currentTitle: '', currentRating: null, currentMoods: const []),
+                      child: VideoEditBottomSheet(currentTitle: '', currentRating: null, currentMoods: const [], isNewVideo: true),
                     ),
                   ),
                 );
 
                 if (result != null) {
-                  // Save the metadata
-                  final title = result['title'] as String;
-                  final rating = result['rating'] as int?;
-                  final moods = result['moods'] as List<dynamic>;
+                  // Check if user discarded the video
+                  if (result['discard'] == true) {
+                    await vm.deleteByPath(latestEntry.path);
+                    return;
+                  }
 
-                  if (title.trim().isNotEmpty) {
+                  // Save the metadata
+                  final title = result['title'] as String?;
+                  final rating = result['rating'] as int?;
+                  final moods = result['moods'] as List<dynamic>?;
+
+                  if (title != null && title.trim().isNotEmpty) {
                     await vm.renameByPath(latestEntry.path, title.trim());
                   }
 
-                  if (rating != null && rating > 0) {
+                  if (rating != null) {
                     await vm.setRatingForEntry(latestEntry.path, rating.clamp(1, 5));
                   }
 
-                  if (moods.isNotEmpty) {
+                  if (moods != null && moods.isNotEmpty) {
                     await vm.setMoodsForEntry(latestEntry.path, moods.cast());
                   }
-                } else {
-                  // User cancelled - delete the video
-                  await vm.deleteByPath(latestEntry.path);
                 }
               }
             },

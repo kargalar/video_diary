@@ -78,13 +78,35 @@ class _RecordingPageState extends State<RecordingPage> {
     }
 
     return PopScope(
-      canPop: true,
+      canPop: !vm.isRecording,
       onPopInvokedWithResult: (didPop, result) async {
-        if (!didPop) return;
-        final vm = context.read<DiaryViewModel>();
-        // Always restore app orientation to portrait when leaving this page
-        SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-        await vm.disposeCamera();
+        if (didPop) {
+          // If already popped (not recording), clean up
+          final vm = context.read<DiaryViewModel>();
+          await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+          await vm.disposeCamera();
+        } else if (vm.isRecording) {
+          // If recording, stop recording first
+          final shouldStop = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Stop recording?'),
+              content: const Text('The video will be saved if you go back.'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Stop & Save')),
+              ],
+            ),
+          );
+
+          if (shouldStop == true && context.mounted) {
+            final nav = Navigator.of(context);
+            await vm.stopRecording();
+            await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+            await vm.disposeCamera();
+            nav.pop(); // Don't return filePath, so bottomsheet won't open
+          }
+        }
       },
       child: Scaffold(
         // Prevent keyboard from pushing the whole UI up; let it overlay instead
@@ -165,11 +187,33 @@ class _RecordingPageState extends State<RecordingPage> {
                         onPressed: () async {
                           final vm = context.read<DiaryViewModel>();
                           final nav = Navigator.of(context);
-                          await vm.disposeCamera();
-                          if (!mounted) return;
-                          // Restore portrait before navigating back
-                          await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-                          nav.pop();
+
+                          if (vm.isRecording) {
+                            // If recording, show confirmation dialog
+                            final shouldStop = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Stop recording?'),
+                                content: const Text('The video will be saved if you go back.'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Stop & Save')),
+                                ],
+                              ),
+                            );
+
+                            if (shouldStop == true && context.mounted) {
+                              await vm.stopRecording();
+                              await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+                              await vm.disposeCamera();
+                              nav.pop(); // Don't return filePath, so bottomsheet won't open
+                            }
+                          } else {
+                            // Not recording, just go back
+                            await vm.disposeCamera();
+                            await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+                            nav.pop();
+                          }
                         },
                       ),
                     ),

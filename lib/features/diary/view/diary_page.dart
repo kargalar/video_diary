@@ -69,6 +69,10 @@ class _DiaryGridState extends State<_DiaryGrid> {
       final key = '${date.year}-${date.month}-${date.day}';
       grouped.putIfAbsent(key, () => []).add(entry);
     }
+    // Sort entries within each day (newest first)
+    for (var dayEntries in grouped.values) {
+      dayEntries.sort((a, b) => (b.date as DateTime).compareTo(a.date as DateTime));
+    }
     return grouped;
   }
 
@@ -93,7 +97,7 @@ class _DiaryGridState extends State<_DiaryGrid> {
 
     final vm = context.read<DiaryViewModel>();
     final groupedEntries = _groupByDay(widget.entries);
-    final sortedDays = groupedEntries.keys.toList()..sort((a, b) => a.compareTo(b)); // Oldest first
+    final sortedDays = groupedEntries.keys.toList()..sort((a, b) => b.compareTo(a)); // Newest first
 
     return ListView.builder(
       shrinkWrap: true,
