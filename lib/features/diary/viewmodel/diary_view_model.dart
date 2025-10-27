@@ -274,7 +274,42 @@ class DiaryViewModel extends ChangeNotifier {
     }
   }
 
-  // --- Streak helpers ---
+  Future<bool> clearAll() async {
+    try {
+      // Delete all video and thumbnail files
+      for (final e in _entries) {
+        try {
+          final f = File(e.path);
+          if (await f.exists()) {
+            await f.delete();
+          }
+        } catch (_) {}
+        try {
+          final t = e.thumbnailPath;
+          if (t != null) {
+            final tf = File(t);
+            if (await tf.exists()) {
+              await tf.delete();
+            }
+          }
+        } catch (_) {}
+      }
+      // Clear all data
+      _entries = [];
+      _dailyRatings = {};
+      _dailyMoods = {};
+      _currentStreak = 0;
+      _maxStreak = 0;
+      _lastRecordedDay = null;
+      await _repo.save(_entries);
+      await _dayRepo.clearAll();
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   void _recomputeStreak() {
     if (_entries.isEmpty) {
       _currentStreak = 0;

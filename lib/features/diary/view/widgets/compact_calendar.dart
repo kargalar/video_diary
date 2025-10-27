@@ -34,9 +34,9 @@ class _CompactCalendarState extends State<CompactCalendar> {
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor.withOpacity(0.5)),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
       ),
       child: Column(
         children: [
@@ -141,27 +141,27 @@ class _CompactDayCell extends StatelessWidget {
       if ((rating ?? 0) > 0) {
         switch (rating) {
           case 5:
-            bg = Colors.green.withOpacity(0.3);
+            bg = Colors.green.withValues(alpha: 0.3);
             break;
           case 4:
-            bg = Colors.lightGreen.withOpacity(0.3);
+            bg = Colors.lightGreen.withValues(alpha: 0.3);
             break;
           case 3:
-            bg = Colors.orange.withOpacity(0.3);
+            bg = Colors.orange.withValues(alpha: 0.3);
             break;
           case 2:
-            bg = Colors.deepOrange.withOpacity(0.3);
+            bg = Colors.deepOrange.withValues(alpha: 0.3);
             break;
           case 1:
-            bg = Colors.red.withOpacity(0.3);
+            bg = Colors.red.withValues(alpha: 0.3);
             break;
         }
       } else {
-        bg = theme.colorScheme.primary.withOpacity(0.2);
+        bg = theme.colorScheme.primary.withValues(alpha: 0.2);
       }
     }
 
-    final fg = isCurrentMonth ? theme.textTheme.bodySmall?.color : theme.textTheme.bodySmall?.color?.withOpacity(0.3);
+    final fg = isCurrentMonth ? theme.textTheme.bodySmall?.color : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.3);
 
     return Container(
       decoration: BoxDecoration(

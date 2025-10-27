@@ -87,4 +87,9 @@ class DayDataRepository {
     }
     return map;
   }
+
+  Future<void> clearAll() async {
+    final box = Hive.box(_boxName);
+    await box.clear();
+  }
 }

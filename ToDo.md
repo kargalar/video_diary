@@ -15,3 +15,5 @@ bir de not kısmı ekle onu da göster belki.
 mood ve puan video çektikten sonra kaydedilmyor.
 
 tüm metinler ingilzice
+
+ana sayfadaki streak ile ilgili şeyler ayarlardan akaptılabilsin.

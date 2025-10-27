@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../viewmodel/settings_view_model.dart';
+import '../../diary/viewmodel/diary_view_model.dart';
 
 class SettingsPage extends StatelessWidget {
   static const route = '/settings';
@@ -10,6 +11,7 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<SettingsViewModel>();
+    final diaryVm = context.watch<DiaryViewModel>();
     final state = vm.state;
     final timeOfDay = TimeOfDay(hour: state.reminderHour, minute: state.reminderMinute);
 
@@ -68,6 +70,40 @@ class SettingsPage extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text('When reminders are enabled, the app will send a notification at the selected time to record your daily video.', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+          ),
+          const Divider(height: 32),
+          // Clear All Videos Section
+          ListTile(
+            leading: const Icon(Icons.delete_forever, color: Colors.red),
+            title: const Text('Clear All Videos', style: TextStyle(color: Colors.red)),
+            subtitle: const Text('Delete all videos and reset all data'),
+            trailing: ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Clear All Videos'),
+                    content: const Text('This will permanently delete all your videos, thumbnails, and reset all ratings and streaks. This action cannot be undone. Are you sure?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+                      TextButton(
+                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text('Delete All'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true) {
+                  final success = await diaryVm.clearAll();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(success ? 'All videos deleted successfully' : 'Failed to delete videos'), backgroundColor: success ? Colors.green : Colors.red));
+                  }
+                }
+              },
+              child: const Text('Clear All'),
+            ),
           ),
         ],
       ),

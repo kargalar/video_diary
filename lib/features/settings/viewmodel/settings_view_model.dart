@@ -79,4 +79,8 @@ class SettingsViewModel extends ChangeNotifier {
     await _repo.save(_state);
     notifyListeners();
   }
+
+  Future<bool> clearAllVideos(Future<bool> Function() clearAllCallback) async {
+    return await clearAllCallback();
+  }
 }

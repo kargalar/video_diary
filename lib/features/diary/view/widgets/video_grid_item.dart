@@ -34,77 +34,95 @@ class VideoGridItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: theme.dividerColor),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Thumbnail - fills container
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            children: [
+              // Thumbnail - full container
+              Positioned.fill(
                 child: thumb != null
-                    ? ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                        child: Image.file(File(thumb), fit: BoxFit.cover, width: double.infinity, height: double.infinity),
-                      )
-                    : Icon(Icons.videocam_outlined, size: 48, color: Colors.grey[400]),
+                    ? Image.file(File(thumb), fit: BoxFit.cover)
+                    : Container(
+                        color: Colors.grey[200],
+                        child: Icon(Icons.videocam_outlined, size: 48, color: Colors.grey[400]),
+                      ),
               ),
-            ),
-            // Info
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title
-                  Text(
-                    title?.isNotEmpty == true ? title! : 'Untitled',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+              // Gradient overlay
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black.withAlpha(150)], stops: const [0.5, 1.0]),
                   ),
-                  const SizedBox(height: 4),
-                  // Date
-                  Text(_formatDate(date), style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-                  const SizedBox(height: 6),
-                  // Moods and Rating
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                ),
+              ),
+              // Info overlay at bottom
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Moods
-                      if (moods.isNotEmpty)
-                        Expanded(
-                          child: Wrap(spacing: 2, children: moods.take(3).map((mood) => Text(mood.emoji, style: const TextStyle(fontSize: 14))).toList()),
+                      // Title
+                      Text(
+                        title?.isNotEmpty == true ? title! : 'Untitled',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
                         ),
-                      // Rating
-                      if ((rating ?? 0) > 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(color: Colors.amber.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.star, size: 12, color: Colors.amber),
-                              const SizedBox(width: 2),
-                              Text(
-                                '$rating',
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.amber),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      // Date
+                      Text(
+                        _formatDate(date),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.white70,
+                          shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Moods and Rating
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Moods
+                          if (moods.isNotEmpty)
+                            Expanded(
+                              child: Wrap(spacing: 2, children: moods.take(3).map((mood) => Text(mood.emoji, style: const TextStyle(fontSize: 14))).toList()),
+                            ),
+                          // Rating
+                          if ((rating ?? 0) > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(color: Colors.amber.withAlpha(230), borderRadius: BorderRadius.circular(8)),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.star, size: 12, color: Colors.white),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    '$rating',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

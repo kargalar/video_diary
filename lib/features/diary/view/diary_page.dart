@@ -2,15 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../model/mood.dart';
-import '../../settings/view/settings_page.dart';
 import '../viewmodel/diary_view_model.dart';
 import 'recording_page.dart';
 import 'widgets/compact_calendar.dart';
 import 'widgets/video_grid_item.dart';
-import 'widgets/video_item.dart';
-import 'widgets/streak_banner.dart';
 import 'widgets/video_dialogs.dart';
 import 'widgets/video_edit_bottom_sheet.dart';
+import '../../settings/view/settings_page.dart';
 
 class DiaryPage extends StatefulWidget {
   const DiaryPage({super.key});
@@ -31,84 +29,104 @@ class _DiaryPageState extends State<DiaryPage> {
   Widget build(BuildContext context) {
     final vm = context.watch<DiaryViewModel>();
     return Scaffold(
-      body: Column(
-        children: [
-          // Streak banner with settings button
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 48, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: StreakBanner(current: vm.currentStreak, max: vm.maxStreak),
-                ),
-                const SizedBox(width: 12),
-                IconButton(tooltip: 'Settings', icon: const Icon(Icons.settings_outlined, size: 24), onPressed: () => Navigator.of(context).pushNamed(SettingsPage.route)),
-              ],
-            ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // Calendar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: CompactCalendar(entries: vm.entries, currentStreak: vm.currentStreak, vm: vm),
+              ),
+              // Videos grid
+              _DiaryGrid(entries: vm.entries),
+            ],
           ),
-          // Compact calendar
-          CompactCalendar(entries: vm.entries, currentStreak: vm.currentStreak, vm: vm),
-          // Videos grid
-          Expanded(child: _DiaryGrid(entries: vm.entries)),
-        ],
+        ),
       ),
       floatingActionButton: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: ElevatedButton.icon(
-          onPressed: () async {
-            final filePath = await Navigator.of(context).pushNamed(RecordingPage.route);
-            if (!mounted) return;
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Streak indicator
+            FloatingActionButton.extended(
+              onPressed: null, // Non-interactive
+              backgroundColor: Colors.white,
+              icon: const Icon(Icons.local_fire_department, color: Colors.orange),
+              label: Text(
+                '${vm.currentStreak} day${vm.currentStreak != 1 ? 's' : ''}',
+                style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Start Recording button
+            FloatingActionButton.extended(
+              onPressed: () async {
+                final filePath = await Navigator.of(context).pushNamed(RecordingPage.route);
+                if (!mounted) return;
 
-            // If a video was recorded, show the edit bottom sheet
-            if (filePath != null && filePath is String) {
-              // Get the latest entry
-              final latestEntry = vm.entries.isNotEmpty ? vm.entries.first : null;
-              if (latestEntry == null) return;
+                // If a video was recorded, show the edit bottom sheet
+                if (filePath != null && filePath is String) {
+                  // Get the latest entry
+                  final latestEntry = vm.entries.isNotEmpty ? vm.entries.first : null;
+                  if (latestEntry == null) return;
 
-              final result = await showModalBottomSheet<Map<String, dynamic>>(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                isDismissible: false,
-                enableDrag: false,
-                builder: (context) => PopScope(
-                  canPop: false,
-                  child: SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.85,
-                    child: VideoEditBottomSheet(currentTitle: '', currentRating: null, currentMoods: const [], showCloseButton: false),
-                  ),
-                ),
-              );
+                  final result = await showModalBottomSheet<Map<String, dynamic>>(
+                    // ignore: use_build_context_synchronously
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    isDismissible: false,
+                    enableDrag: false,
+                    builder: (context) => PopScope(
+                      canPop: false,
+                      child: SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.85,
+                        child: VideoEditBottomSheet(currentTitle: '', currentRating: null, currentMoods: const [], showCloseButton: false),
+                      ),
+                    ),
+                  );
 
-              if (result != null) {
-                // Save the metadata
-                final title = result['title'] as String;
-                final rating = result['rating'] as int?;
-                final moods = result['moods'] as List<dynamic>;
+                  if (result != null) {
+                    // Save the metadata
+                    final title = result['title'] as String;
+                    final rating = result['rating'] as int?;
+                    final moods = result['moods'] as List<dynamic>;
 
-                if (title.trim().isNotEmpty) {
-                  await vm.renameByPath(latestEntry.path, title.trim());
+                    if (title.trim().isNotEmpty) {
+                      await vm.renameByPath(latestEntry.path, title.trim());
+                    }
+
+                    if (rating != null && rating > 0) {
+                      await vm.setRatingForEntry(latestEntry.path, rating.clamp(1, 5));
+                    }
+
+                    if (moods.isNotEmpty) {
+                      await vm.setMoodsForEntry(latestEntry.path, moods.cast());
+                    }
+                  } else {
+                    // User cancelled - delete the video
+                    await vm.deleteByPath(latestEntry.path);
+                  }
                 }
-
-                if (rating != null && rating > 0) {
-                  await vm.setRatingForEntry(latestEntry.path, rating.clamp(1, 5));
-                }
-
-                if (moods.isNotEmpty) {
-                  await vm.setMoodsForEntry(latestEntry.path, moods.cast());
-                }
-              } else {
-                // User cancelled - delete the video
-                await vm.deleteByPath(latestEntry.path);
-              }
-            }
-          },
-          icon: const Icon(Icons.fiber_manual_record, size: 16),
-          label: const Text('Start Recording', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
+              },
+              icon: const Icon(Icons.fiber_manual_record, size: 16, color: Colors.black87),
+              backgroundColor: Colors.white,
+              label: const Text(
+                'Start Recording',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: Colors.black87),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Settings button
+            FloatingActionButton(
+              onPressed: () => Navigator.of(context).pushNamed(SettingsPage.route),
+              backgroundColor: Colors.white,
+              tooltip: 'Settings',
+              child: const Icon(Icons.settings, color: Colors.black87),
+            ),
+          ],
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -146,6 +164,8 @@ class _DiaryGridState extends State<_DiaryGrid> {
 
     final vm = context.read<DiaryViewModel>();
     return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 0.75),
       itemCount: widget.entries.length,
@@ -179,79 +199,6 @@ class _DiaryGridState extends State<_DiaryGrid> {
             final ok = await VideoDialogs.showDeleteConfirmation(context);
             if (ok == true) {
               await vm.deleteByPath(e.path as String);
-            }
-          },
-        );
-      },
-    );
-  }
-}
-
-// Legacy list view - kept for reference, not used
-class _DiaryList extends StatefulWidget {
-  final List<dynamic> entries; // DiaryEntry list but keep loose to avoid import
-  const _DiaryList({required this.entries});
-
-  @override
-  State<_DiaryList> createState() => _DiaryListState();
-}
-
-class _DiaryListState extends State<_DiaryList> {
-  @override
-  Widget build(BuildContext context) {
-    if (widget.entries.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.video_library_outlined, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 16),
-            Text(
-              'No recordings yet',
-              style: TextStyle(fontSize: 16, color: Colors.grey[500], fontWeight: FontWeight.w300, letterSpacing: 0.5),
-            ),
-          ],
-        ),
-      );
-    }
-    final vm = context.read<DiaryViewModel>();
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: widget.entries.length,
-      itemBuilder: (ctx, i) {
-        final e = widget.entries[i];
-        final path = e.path as String;
-        final title = e.title as String?;
-
-        return VideoItem(
-          entry: e,
-          onEdit: (updates) async {
-            final newTitle = updates['title'] as String;
-            final newRating = updates['rating'] as int?;
-            final newMoods = updates['moods'] as List<Mood>;
-
-            // Update title if changed
-            if (newTitle != title) {
-              await vm.renameByPath(path, newTitle);
-            }
-
-            // Update rating if changed
-            if (newRating != (e.rating as int?)) {
-              if (newRating != null) {
-                await vm.setRatingForEntry(path, newRating);
-              }
-            }
-
-            // Update moods if changed
-            final currentMoods = (e.moods as List<Mood>?) ?? [];
-            if (newMoods.toSet().difference(currentMoods.toSet()).isNotEmpty || currentMoods.toSet().difference(newMoods.toSet()).isNotEmpty) {
-              await vm.setMoodsForEntry(path, newMoods);
-            }
-          },
-          onDelete: () async {
-            final ok = await VideoDialogs.showDeleteConfirmation(context);
-            if (ok == true) {
-              await vm.deleteByPath(path);
             }
           },
         );
