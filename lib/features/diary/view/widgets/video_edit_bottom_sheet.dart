@@ -6,8 +6,9 @@ class VideoEditBottomSheet extends StatefulWidget {
   final String currentTitle;
   final int? currentRating;
   final List<Mood> currentMoods;
+  final bool showCloseButton;
 
-  const VideoEditBottomSheet({super.key, required this.currentTitle, this.currentRating, required this.currentMoods});
+  const VideoEditBottomSheet({super.key, required this.currentTitle, this.currentRating, required this.currentMoods, this.showCloseButton = true});
 
   @override
   State<VideoEditBottomSheet> createState() => _VideoEditBottomSheetState();
@@ -58,7 +59,7 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                 Expanded(
                   child: Text('Edit Video', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w500, letterSpacing: 0.5)),
                 ),
-                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                if (widget.showCloseButton) IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
           ),
@@ -162,25 +163,58 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
               ),
             ),
           ),
-          // Save button
+          // Action buttons
           SafeArea(
             top: false,
             child: Padding(
               padding: const EdgeInsets.all(20),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () {
-                    Navigator.pop(context, {'title': _titleController.text.trim(), 'rating': _rating == 0 ? null : _rating, 'moods': _selectedMoods.toList()});
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF2C2C2C),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: const Text('Save', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
-                ),
-              ),
+              child: widget.showCloseButton
+                  ? SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () {
+                          Navigator.pop(context, {'title': _titleController.text.trim(), 'rating': _rating == 0 ? null : _rating, 'moods': _selectedMoods.toList()});
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF2C2C2C),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text('Save', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
+                      ),
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context), // Cancel - returns null
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: Colors.grey[400]!),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: Colors.grey[700]),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () {
+                              Navigator.pop(context, {'title': _titleController.text.trim(), 'rating': _rating == 0 ? null : _rating, 'moods': _selectedMoods.toList()});
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF2C2C2C),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: const Text('Save', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ),
         ],

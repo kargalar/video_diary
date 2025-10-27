@@ -4,10 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../model/mood.dart';
 import '../viewmodel/diary_view_model.dart';
 import '../../settings/viewmodel/settings_view_model.dart';
-import 'widgets/video_edit_bottom_sheet.dart';
 
 class RecordingPage extends StatefulWidget {
   static const route = '/record';
@@ -109,48 +107,13 @@ class _RecordingPageState extends State<RecordingPage> {
                 } else {
                   final filePath = await vm.stopRecording();
                   if (!context.mounted) return;
-                  if (filePath != null) {
-                    // Force portrait immediately after recording ends
-                    await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-                    if (!context.mounted) return;
 
-                    // Get the latest entry path
-                    final latestPath = vm.entries.isNotEmpty ? vm.entries.first.path : null;
+                  // Force portrait immediately after recording ends
+                  await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
 
-                    final result = await showModalBottomSheet<Map<String, dynamic>>(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (context) => SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.85,
-                        child: const VideoEditBottomSheet(currentTitle: '', currentRating: null, currentMoods: []),
-                      ),
-                    );
-
-                    if (result != null && latestPath != null) {
-                      final title = result['title'] as String;
-                      final rating = result['rating'] as int?;
-                      final moods = result['moods'] as List<Mood>;
-
-                      // Rename with title
-                      if (title.trim().isNotEmpty) {
-                        await vm.renameLastRecordingWithTitle(title.trim());
-                      }
-
-                      // Set rating
-                      if (rating != null && rating > 0) {
-                        await vm.setRatingForEntry(latestPath, rating.clamp(1, 5));
-                      }
-
-                      // Set moods
-                      if (moods.isNotEmpty) {
-                        await vm.setMoodsForEntry(latestPath, moods);
-                      }
-                    }
-                  }
-                  // Dispose camera first, then pop to avoid CameraException
+                  // Dispose camera first, then pop with the file path
                   await vm.disposeCamera();
-                  nav.pop();
+                  nav.pop(filePath); // Return the file path to the previous screen
                 }
               },
             );

@@ -11,3 +11,7 @@ videonunu boyutu bilgisi ayarlardan açılıp kapatılabilsin.
 streak şeyisi çok daha compact olsun. next leeldeki gibi
 
 notifiacion saati ve switchi aynı satırda olsun 
+
+streak takvim direkt ana sayfada olsun videolar da onnu altında olsunç
+
+mood ve puan video çektikten sonra kaydedilmyor.

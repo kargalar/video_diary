@@ -8,6 +8,7 @@ import 'recording_page.dart';
 import 'widgets/video_item.dart';
 import 'widgets/streak_banner.dart';
 import 'widgets/video_dialogs.dart';
+import 'widgets/video_edit_bottom_sheet.dart';
 
 class DiaryPage extends StatefulWidget {
   const DiaryPage({super.key});
@@ -51,7 +52,54 @@ class _DiaryPageState extends State<DiaryPage> {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
-            onTap: () => Navigator.of(context).pushNamed(RecordingPage.route),
+            onTap: () async {
+              final filePath = await Navigator.of(context).pushNamed(RecordingPage.route);
+              if (!mounted) return;
+
+              // If a video was recorded, show the edit bottom sheet
+              if (filePath != null && filePath is String) {
+                // Get the latest entry
+                final latestEntry = vm.entries.isNotEmpty ? vm.entries.first : null;
+                if (latestEntry == null) return;
+
+                final result = await showModalBottomSheet<Map<String, dynamic>>(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  isDismissible: false,
+                  enableDrag: false,
+                  builder: (context) => PopScope(
+                    canPop: false,
+                    child: SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.85,
+                      child: VideoEditBottomSheet(currentTitle: '', currentRating: null, currentMoods: const [], showCloseButton: false),
+                    ),
+                  ),
+                );
+
+                if (result != null) {
+                  // Save the metadata
+                  final title = result['title'] as String;
+                  final rating = result['rating'] as int?;
+                  final moods = result['moods'] as List<dynamic>;
+
+                  if (title.trim().isNotEmpty) {
+                    await vm.renameByPath(latestEntry.path, title.trim());
+                  }
+
+                  if (rating != null && rating > 0) {
+                    await vm.setRatingForEntry(latestEntry.path, rating.clamp(1, 5));
+                  }
+
+                  if (moods.isNotEmpty) {
+                    await vm.setMoodsForEntry(latestEntry.path, moods.cast());
+                  }
+                } else {
+                  // User cancelled - delete the video
+                  await vm.deleteByPath(latestEntry.path);
+                }
+              }
+            },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Row(
