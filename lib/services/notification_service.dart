@@ -51,7 +51,16 @@ class NotificationService {
     await _ensureAndroidPermissions();
     // Prefer inexact scheduling to avoid exact alarm restrictions; still repeats daily at selected time
     await _plugin.cancel(1001);
-    await _plugin.zonedSchedule(1001, 'Video Günlüğü', 'Günün videosunu çekmeyi unutma', scheduled, details, androidScheduleMode: AndroidScheduleMode.inexact, uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime, matchDateTimeComponents: DateTimeComponents.time);
+    await _plugin.zonedSchedule(
+      1001,
+      'Video Diary',
+      'Don\'t forget to record today\'s video',
+      scheduled,
+      details,
+      androidScheduleMode: AndroidScheduleMode.inexact,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
   }
 
   Future<void> cancelAll() => _plugin.cancelAll();

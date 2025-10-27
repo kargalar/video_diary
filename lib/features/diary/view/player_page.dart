@@ -70,7 +70,7 @@ class _PlayerPageState extends State<PlayerPage> {
       backgroundColor: Colors.black,
       body: _isError
           ? const Center(
-              child: Text('Video açılamadı', style: TextStyle(color: Colors.white)),
+              child: Text('Could not open video', style: TextStyle(color: Colors.white)),
             )
           : _controller == null
           ? const Center(child: CircularProgressIndicator())

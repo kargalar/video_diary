@@ -12,6 +12,7 @@ import '../../settings/data/settings_repository.dart';
 import '../data/diary_repository.dart';
 import '../data/day_data_repository.dart';
 import '../model/diary_entry.dart';
+import '../model/mood.dart';
 
 class DiaryViewModel extends ChangeNotifier {
   final DiaryRepository _repo = DiaryRepository();
@@ -123,9 +124,18 @@ class DiaryViewModel extends ChangeNotifier {
     final idx = _entries.indexWhere((e) => e.path == path);
     if (idx == -1) return;
     final old = _entries[idx];
-    _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, rating: rating.clamp(1, 5));
+    _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, rating: rating.clamp(1, 5), moods: old.moods);
     await _repo.save(_entries);
     await _recomputeDailyAverageForDay(old.date);
+    notifyListeners();
+  }
+
+  Future<void> setMoodsForEntry(String path, List<Mood> moods) async {
+    final idx = _entries.indexWhere((e) => e.path == path);
+    if (idx == -1) return;
+    final old = _entries[idx];
+    _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, rating: old.rating, moods: moods);
+    await _repo.save(_entries);
     notifyListeners();
   }
 

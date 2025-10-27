@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../model/mood.dart';
 import '../../settings/view/settings_page.dart';
 import '../viewmodel/diary_view_model.dart';
 import 'recording_page.dart';
@@ -29,11 +30,11 @@ class _DiaryPageState extends State<DiaryPage> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Günlük', style: TextStyle(fontWeight: FontWeight.w300, letterSpacing: 1.2)),
+        title: const Text('Daily', style: TextStyle(fontWeight: FontWeight.w300, letterSpacing: 1.2)),
         elevation: 0,
         actions: [
-          IconButton(tooltip: 'Takvim', icon: const Icon(Icons.calendar_today_outlined, size: 20), onPressed: () => Navigator.of(context).pushNamed('/calendar')),
-          IconButton(tooltip: 'Ayarlar', icon: const Icon(Icons.settings_outlined, size: 20), onPressed: () => Navigator.of(context).pushNamed(SettingsPage.route)),
+          IconButton(tooltip: 'Calendar', icon: const Icon(Icons.calendar_today_outlined, size: 20), onPressed: () => Navigator.of(context).pushNamed('/calendar')),
+          IconButton(tooltip: 'Settings', icon: const Icon(Icons.settings_outlined, size: 20), onPressed: () => Navigator.of(context).pushNamed(SettingsPage.route)),
           const SizedBox(width: 8),
         ],
       ),
@@ -59,7 +60,7 @@ class _DiaryPageState extends State<DiaryPage> {
                   Icon(Icons.fiber_manual_record, size: 16, color: theme.colorScheme.onPrimary),
                   const SizedBox(width: 8),
                   Text(
-                    'Kayıt Başlat',
+                    'Start Recording',
                     style: TextStyle(color: theme.colorScheme.onPrimary, fontSize: 15, fontWeight: FontWeight.w500, letterSpacing: 0.5),
                   ),
                 ],
@@ -94,7 +95,7 @@ class _DiaryListState extends State<_DiaryList> {
             Icon(Icons.video_library_outlined, size: 64, color: Colors.grey[300]),
             const SizedBox(height: 16),
             Text(
-              'Henüz kayıt yok',
+              'No recordings yet',
               style: TextStyle(fontSize: 16, color: Colors.grey[500], fontWeight: FontWeight.w300, letterSpacing: 0.5),
             ),
           ],
@@ -112,10 +113,27 @@ class _DiaryListState extends State<_DiaryList> {
 
         return VideoItem(
           entry: e,
-          onRename: () async {
-            final newTitle = await VideoDialogs.showRenameDialog(context, current: title ?? '');
-            if (newTitle != null && newTitle.trim().isNotEmpty) {
-              await vm.renameByPath(path, newTitle.trim());
+          onEdit: (updates) async {
+            final newTitle = updates['title'] as String;
+            final newRating = updates['rating'] as int?;
+            final newMoods = updates['moods'] as List<Mood>;
+
+            // Update title if changed
+            if (newTitle != title) {
+              await vm.renameByPath(path, newTitle);
+            }
+
+            // Update rating if changed
+            if (newRating != (e.rating as int?)) {
+              if (newRating != null) {
+                await vm.setRatingForEntry(path, newRating);
+              }
+            }
+
+            // Update moods if changed
+            final currentMoods = (e.moods as List<Mood>?) ?? [];
+            if (newMoods.toSet().difference(currentMoods.toSet()).isNotEmpty || currentMoods.toSet().difference(newMoods.toSet()).isNotEmpty) {
+              await vm.setMoodsForEntry(path, newMoods);
             }
           },
           onDelete: () async {

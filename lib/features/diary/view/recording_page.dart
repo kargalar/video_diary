@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../model/mood.dart';
 import '../viewmodel/diary_view_model.dart';
 import '../../settings/viewmodel/settings_view_model.dart';
+import 'widgets/video_edit_bottom_sheet.dart';
 
 class RecordingPage extends StatefulWidget {
   static const route = '/record';
@@ -111,24 +113,42 @@ class _RecordingPageState extends State<RecordingPage> {
                     // Force portrait immediately after recording ends
                     await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
                     if (!context.mounted) return;
-                    final res = await _askTitleAndRating(context);
-                    if (res != null) {
-                      final t = res.title.trim();
-                      if (t.isNotEmpty) {
-                        await vm.renameLastRecordingWithTitle(t);
+
+                    // Get the latest entry path
+                    final latestPath = vm.entries.isNotEmpty ? vm.entries.first.path : null;
+
+                    final result = await showModalBottomSheet<Map<String, dynamic>>(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.85,
+                        child: const VideoEditBottomSheet(currentTitle: '', currentRating: null, currentMoods: []),
+                      ),
+                    );
+
+                    if (result != null && latestPath != null) {
+                      final title = result['title'] as String;
+                      final rating = result['rating'] as int?;
+                      final moods = result['moods'] as List<Mood>;
+
+                      // Rename with title
+                      if (title.trim().isNotEmpty) {
+                        await vm.renameLastRecordingWithTitle(title.trim());
                       }
-                      if (res.rating != null && res.rating! > 0) {
-                        // Set rating on the latest entry (just saved)
-                        final latestPath = vm.entries.isNotEmpty ? vm.entries.first.path : null;
-                        if (latestPath != null) {
-                          await vm.setRatingForEntry(latestPath, res.rating!.clamp(1, 5));
-                        }
+
+                      // Set rating
+                      if (rating != null && rating > 0) {
+                        await vm.setRatingForEntry(latestPath, rating.clamp(1, 5));
                       }
-                      if (res.moods.isNotEmpty) {
-                        await vm.addMoodsForDay(DateTime.now(), res.moods);
+
+                      // Set moods
+                      if (moods.isNotEmpty) {
+                        await vm.setMoodsForEntry(latestPath, moods);
                       }
                     }
                   }
+                  // Dispose camera first, then pop to avoid CameraException
                   await vm.disposeCamera();
                   nav.pop();
                 }
@@ -193,7 +213,7 @@ class _RecordingPageState extends State<RecordingPage> {
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
-                        'Kayıt',
+                        'Recording',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: Colors.white70, fontSize: 16),
@@ -216,101 +236,6 @@ class _RecordingPageState extends State<RecordingPage> {
       ),
     );
   }
-
-  Future<_TitleRating?> _askTitleAndRating(BuildContext context) async {
-    final titleController = TextEditingController();
-    int rating = 0;
-    final Set<String> moods = <String>{};
-    return showModalBottomSheet<_TitleRating>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (ctx) {
-        final viewInsets = MediaQuery.of(ctx).viewInsets; // respects keyboard height
-        return Padding(
-          padding: EdgeInsets.only(bottom: viewInsets.bottom),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text('Başlık ve Puan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: titleController,
-                    autofocus: true,
-                    textInputAction: TextInputAction.done,
-                    decoration: const InputDecoration(hintText: 'Örn: Gün 1', border: OutlineInputBorder()),
-                    onSubmitted: (_) => Navigator.pop(ctx, _TitleRating(titleController.text, rating == 0 ? null : rating, moods.toList())),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Text('Video Puanı:'),
-                      const SizedBox(width: 8),
-                      StatefulBuilder(
-                        builder: (context, setStateSb) {
-                          Widget star(int v) => IconButton(
-                            visualDensity: VisualDensity.compact,
-                            iconSize: 24,
-                            onPressed: () => setStateSb(() => rating = v),
-                            icon: Icon(v <= rating ? Icons.star : Icons.star_border, color: Colors.amber),
-                          );
-                          return Row(children: [for (int i = 1; i <= 5; i++) star(i)]);
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Align(alignment: Alignment.centerLeft, child: Text('Nasıl hissediyorsun? (Birden fazla seçebilirsin)')),
-                  const SizedBox(height: 8),
-                  StatefulBuilder(
-                    builder: (context, setStateSb) {
-                      Widget chip(String id, String label, String emoji) => Padding(
-                        padding: const EdgeInsets.only(right: 6, bottom: 6),
-                        child: FilterChip(
-                          label: Text('$emoji $label'),
-                          selected: moods.contains(id),
-                          onSelected: (sel) => setStateSb(() {
-                            if (sel) {
-                              moods.add(id);
-                            } else {
-                              moods.remove(id);
-                            }
-                          }),
-                        ),
-                      );
-                      return Wrap(spacing: 0, runSpacing: 0, children: [chip('mutlu', 'Mutlu', '😊'), chip('uzgun', 'Üzgün', '😢'), chip('kizgin', 'Kızgın', '😠'), chip('yorgun', 'Yorgun', '😴'), chip('hasta', 'Hasta', '🤒'), chip('heyecanli', 'Heyecanlı', '🤩'), chip('stresli', 'Stresli', '😬')]);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
-                      const SizedBox(width: 8),
-                      ElevatedButton(onPressed: () => Navigator.pop(ctx, _TitleRating(titleController.text, rating == 0 ? null : rating, moods.toList())), child: const Text('Kaydet')),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _TitleRating {
-  final String title;
-  final int? rating; // 1..5
-  final List<String> moods; // multi-select
-  _TitleRating(this.title, this.rating, [List<String>? moods]) : moods = moods ?? const [];
 }
 
 class _RecordingTimer extends StatefulWidget {

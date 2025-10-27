@@ -38,10 +38,10 @@ class StreakBanner extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('$current gün', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500, letterSpacing: 0.5)),
+                  Text('$current days', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500, letterSpacing: 0.5)),
                   const SizedBox(height: 2),
                   Text(
-                    max > 0 ? 'En iyi: $max gün' : 'Günlük kayıt serisini devam ettir',
+                    max > 0 ? 'Best: $max days' : 'Keep your daily streak going',
                     style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600], fontWeight: FontWeight.w300, fontSize: 12),
                   ),
                 ],

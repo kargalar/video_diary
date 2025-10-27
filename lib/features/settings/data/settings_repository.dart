@@ -1,21 +1,29 @@
-import 'dart:convert';
-
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import '../model/settings.dart';
 
 class SettingsRepository {
-  static const _key = 'settings';
+  static const _boxName = 'settings';
+  bool _inited = false;
+
+  Future<void> init() async {
+    if (_inited) return;
+    await Hive.initFlutter();
+    await Hive.openBox(_boxName);
+    _inited = true;
+  }
 
   Future<SettingsModel> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
-    if (raw == null || raw.isEmpty) return SettingsModel.def;
-    return SettingsModel.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    await init();
+    final box = Hive.box(_boxName);
+    final raw = box.get('settings');
+    if (raw == null) return SettingsModel.def;
+    return SettingsModel.fromJson(Map<String, dynamic>.from(raw as Map));
   }
 
   Future<void> save(SettingsModel settings) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, jsonEncode(settings.toJson()));
+    await init();
+    final box = Hive.box(_boxName);
+    await box.put('settings', settings.toJson());
   }
 }

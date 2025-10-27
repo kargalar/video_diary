@@ -3,14 +3,16 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
+import '../../model/mood.dart';
 import '../player_page.dart';
+import 'video_edit_bottom_sheet.dart';
 
 class VideoItem extends StatelessWidget {
   final dynamic entry;
-  final VoidCallback onRename;
+  final Function(Map<String, dynamic> updates) onEdit;
   final VoidCallback onDelete;
 
-  const VideoItem({super.key, required this.entry, required this.onRename, required this.onDelete});
+  const VideoItem({super.key, required this.entry, required this.onEdit, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +22,7 @@ class VideoItem extends StatelessWidget {
     final durMs = entry.durationMs as int?;
     final bytes = entry.fileBytes as int?;
     final title = entry.title as String?;
+    final moods = (entry.moods as List<Mood>?) ?? [];
     final durationText = durMs != null ? _formatDuration(Duration(milliseconds: durMs)) : '';
     final sizeText = bytes != null ? _formatSize(bytes) : '';
 
@@ -32,11 +35,11 @@ class VideoItem extends StatelessWidget {
           extentRatio: 0.5,
           children: [
             SlidableAction(
-              onPressed: (_) => onRename(),
+              onPressed: (_) => _openEditBottomSheet(context),
               backgroundColor: const Color(0xFF5C5C5C),
               foregroundColor: Colors.white,
               icon: Icons.edit_outlined,
-              label: 'Düzenle',
+              label: 'Edit',
               borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
             ),
             SlidableAction(
@@ -44,7 +47,7 @@ class VideoItem extends StatelessWidget {
               backgroundColor: const Color(0xFF2C2C2C),
               foregroundColor: Colors.white,
               icon: Icons.delete_outline,
-              label: 'Sil',
+              label: 'Delete',
               borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
             ),
           ],
@@ -54,6 +57,7 @@ class VideoItem extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: () => _openPlayer(context, path: path, title: title ?? _formatDate(date)),
+            onLongPress: () => _openEditBottomSheet(context),
             child: Container(
               decoration: BoxDecoration(
                 border: Border.all(color: Theme.of(context).dividerColor),
@@ -97,15 +101,15 @@ class VideoItem extends StatelessWidget {
                                 const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: const Color(0xFF2C2C2C).withOpacity(0.08), borderRadius: BorderRadius.circular(6)),
+                                  decoration: BoxDecoration(color: Colors.amber.withAlpha(20), borderRadius: BorderRadius.circular(6)),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(Icons.star, size: 12, color: Color(0xFF2C2C2C)),
+                                      const Icon(Icons.star, size: 12, color: Colors.amber),
                                       const SizedBox(width: 2),
                                       Text(
                                         '${entry.rating}',
-                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF2C2C2C)),
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.amber),
                                       ),
                                     ],
                                   ),
@@ -118,6 +122,16 @@ class VideoItem extends StatelessWidget {
                             _formatDate(date),
                             style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w300),
                           ),
+                          if (moods.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Wrap(
+                              spacing: 4,
+                              runSpacing: 2,
+                              children: moods.take(3).map((mood) {
+                                return Text(mood.emoji, style: const TextStyle(fontSize: 14));
+                              }).toList(),
+                            ),
+                          ],
                           const SizedBox(height: 4),
                           Text(
                             '$durationText  •  $sizeText',
@@ -142,6 +156,26 @@ class VideoItem extends StatelessWidget {
       PlayerPage.route,
       arguments: PlayerPageArgs(path: path, title: title),
     );
+  }
+
+  Future<void> _openEditBottomSheet(BuildContext context) async {
+    final title = entry.title as String?;
+    final rating = entry.rating as int?;
+    final moods = (entry.moods as List<Mood>?) ?? [];
+
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SizedBox(
+        height: MediaQuery.of(context).size.height * 0.85,
+        child: VideoEditBottomSheet(currentTitle: title ?? '', currentRating: rating, currentMoods: moods),
+      ),
+    );
+
+    if (result != null) {
+      onEdit(result);
+    }
   }
 
   String _formatDate(DateTime d) {

@@ -29,17 +29,43 @@ class SettingsViewModel extends ChangeNotifier {
   Future<void> setReminder(int hour, int minute) async {
     _state = _state.copyWith(reminderHour: hour, reminderMinute: minute);
     await _repo.save(_state);
-    await _requestNotificationPermission();
-    await _notifier.init();
-    await _notifier.scheduleDaily(hour, minute);
+
+    // Only schedule if enabled
+    if (_state.reminderEnabled) {
+      await _requestNotificationPermission();
+      await _notifier.init();
+      await _notifier.scheduleDaily(hour, minute);
+    }
     notifyListeners();
   }
 
-  Future<void> _requestNotificationPermission() async {
-    final p = await Permission.notification.request();
-    if (!p.isGranted && !p.isLimited) {
-      // No-op; user can enable later
+  Future<bool> setReminderEnabled(bool enabled) async {
+    // Check permission when enabling
+    if (enabled) {
+      final hasPermission = await _requestNotificationPermission();
+      if (!hasPermission) {
+        // Permission denied, open settings
+        await openAppSettings();
+        return false;
+      }
+
+      // Schedule notification
+      await _notifier.init();
+      await _notifier.scheduleDaily(_state.reminderHour, _state.reminderMinute);
+    } else {
+      // Disable notifications
+      await _notifier.cancelAll();
     }
+
+    _state = _state.copyWith(reminderEnabled: enabled);
+    await _repo.save(_state);
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> _requestNotificationPermission() async {
+    final p = await Permission.notification.request();
+    return p.isGranted || p.isLimited;
   }
 
   Future<void> setDarkMode(bool value) async {
