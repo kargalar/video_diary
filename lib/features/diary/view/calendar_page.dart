@@ -275,62 +275,90 @@ class _DayCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Color by rating (explicit mapping to avoid overflow UI with stars)
-    // Priority: streak > rating color > hasEntries > empty
+    // Material 3 color harmonization and modern look
     Color bg;
     if (inStreak) {
-      bg = theme.colorScheme.secondaryContainer;
+      bg = theme.colorScheme.tertiaryContainer;
     } else if ((rating ?? 0) > 0) {
       switch (rating) {
         case 5:
-          bg = Colors.green.withValues(alpha: 0.35);
+          bg = theme.colorScheme.primaryContainer.withValues(alpha: 0.85);
           break;
         case 4:
-          bg = Colors.lightGreen.withValues(alpha: 0.35);
+          bg = theme.colorScheme.secondaryContainer.withValues(alpha: 0.85);
           break;
         case 3:
-          bg = Colors.amber.withValues(alpha: 0.35);
+          bg = theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.85);
           break;
         case 2:
-          bg = Colors.deepOrange.withValues(alpha: 0.30);
+          bg = theme.colorScheme.errorContainer.withValues(alpha: 0.60);
           break;
         case 1:
         default:
-          bg = Colors.purple.withValues(alpha: 0.30);
+          bg = theme.colorScheme.outlineVariant.withValues(alpha: 0.40);
       }
     } else if (hasEntries) {
-      bg = theme.colorScheme.primaryContainer;
+      bg = theme.colorScheme.primaryContainer.withValues(alpha: 0.65);
     } else {
       bg = theme.colorScheme.surface;
     }
-    final fg = isCurrentMonth ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withValues(alpha: 0.5);
-    final border = isToday ? Border.all(color: theme.colorScheme.primary, width: 2) : null;
-    return Material(
-      color: bg,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: border?.top ?? BorderSide.none),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('${date.day}', style: theme.textTheme.bodyMedium?.copyWith(color: fg)),
-                  if (hasEntries)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(999)),
-                      child: Text('$count', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onPrimary)),
+    final fg = isCurrentMonth ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withValues(alpha: 0.35);
+    final border = isToday ? Border.all(color: theme.colorScheme.primary, width: 2.5) : Border.all(color: Colors.transparent, width: 0);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeInOut,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: border,
+        boxShadow: isToday ? [BoxShadow(color: theme.colorScheme.primary.withValues(alpha: 0.18), blurRadius: 8, spreadRadius: 1)] : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          splashColor: theme.colorScheme.primary.withValues(alpha: 0.10),
+          highlightColor: theme.colorScheme.primary.withValues(alpha: 0.07),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${date.day}',
+                      style: theme.textTheme.bodyLarge?.copyWith(color: fg, fontWeight: isToday ? FontWeight.bold : FontWeight.w500),
                     ),
-                ],
-              ),
-              const Spacer(),
-              if (moods.isNotEmpty) Wrap(spacing: 1, runSpacing: 0, children: moods.take(4).map((m) => Text(_moodEmoji(m), style: const TextStyle(fontSize: 10))).toList()),
-            ],
+                    if (hasEntries)
+                      AnimatedScale(
+                        scale: isToday ? 1.15 : 1.0,
+                        duration: const Duration(milliseconds: 180),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary,
+                            borderRadius: BorderRadius.circular(999),
+                            boxShadow: [if (isToday) BoxShadow(color: theme.colorScheme.primary.withAlpha(50), blurRadius: 6, spreadRadius: 1)],
+                          ),
+                          child: Text(
+                            '$count',
+                            style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const Spacer(),
+                if (moods.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Wrap(spacing: 2, runSpacing: 0, children: moods.take(4).map((m) => Text(_moodEmoji(m), style: const TextStyle(fontSize: 13))).toList()),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
