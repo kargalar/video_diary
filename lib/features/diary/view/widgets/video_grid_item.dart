@@ -132,6 +132,7 @@ class VideoGridItem extends StatelessWidget {
     final title = entry.title as String?;
     final rating = entry.rating as int?;
     final moods = (entry.moods as List<Mood>?) ?? [];
+    final date = entry.date as DateTime?;
 
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
@@ -139,7 +140,7 @@ class VideoGridItem extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (context) => SizedBox(
         height: MediaQuery.of(context).size.height * 0.7,
-        child: VideoEditBottomSheet(currentTitle: title ?? '', currentRating: rating, currentMoods: moods, showDeleteButton: true),
+        child: VideoEditBottomSheet(currentTitle: title ?? '', currentRating: rating, currentMoods: moods, showDeleteButton: true, currentDate: date),
       ),
     );
 

@@ -17,3 +17,7 @@ tüm metinler ingilzice
 ana sayfadaki streak ile ilgili şeyler ayarlardan akaptılabilsin.
 
 takvimde bottom streak durumunu göster. gaçıncı günde olduğunu
+
+arka kamera açılsın??
+
+1 günde çekilen birden falza video klasör olar kgösterilsin??

@@ -139,6 +139,15 @@ class DiaryViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setDateForEntry(String path, DateTime newDate) async {
+    final idx = _entries.indexWhere((e) => e.path == path);
+    if (idx == -1) return;
+    final old = _entries[idx];
+    _entries[idx] = DiaryEntry(path: old.path, date: newDate, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, rating: old.rating, moods: old.moods);
+    await _repo.save(_entries);
+    notifyListeners();
+  }
+
   int? getDailyAverageRating(DateTime day) => _dailyRatings[_keyFor(day)];
 
   Future<void> clearRatingsForDay(DateTime day) async {

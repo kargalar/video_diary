@@ -94,6 +94,7 @@ class _DiaryGridState extends State<_DiaryGrid> {
             final newTitle = updates['title'] as String;
             final newRating = updates['rating'] as int?;
             final newMoods = updates['moods'] as List<Mood>;
+            final newDate = updates['date'] as DateTime?;
 
             if (newTitle != title) {
               await vm.renameByPath(path, newTitle);
@@ -108,6 +109,10 @@ class _DiaryGridState extends State<_DiaryGrid> {
             final currentMoods = (e.moods as List<Mood>?) ?? [];
             if (newMoods.toSet().difference(currentMoods.toSet()).isNotEmpty || currentMoods.toSet().difference(newMoods.toSet()).isNotEmpty) {
               await vm.setMoodsForEntry(path, newMoods);
+            }
+
+            if (newDate != null && newDate != (e.date as DateTime)) {
+              await vm.setDateForEntry(path, newDate);
             }
           },
           onDelete: () async {
