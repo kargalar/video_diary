@@ -72,7 +72,7 @@ class VideoDiaryApp extends StatelessWidget {
             ),
             iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(foregroundColor: const Color(0xFFE0E0E0))),
           ),
-          themeMode: settings.state.darkMode ? ThemeMode.dark : ThemeMode.light,
+          themeMode: ThemeMode.dark,
           routes: {'/': (_) => const DiaryPage()},
           onGenerateRoute: (settingsRoute) {
             if (settingsRoute.name == PlayerPage.route && settingsRoute.arguments is PlayerPageArgs) {

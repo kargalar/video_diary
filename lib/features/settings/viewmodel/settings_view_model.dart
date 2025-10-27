@@ -68,12 +68,6 @@ class SettingsViewModel extends ChangeNotifier {
     return p.isGranted || p.isLimited;
   }
 
-  Future<void> setDarkMode(bool value) async {
-    _state = _state.copyWith(darkMode: value);
-    await _repo.save(_state);
-    notifyListeners();
-  }
-
   Future<void> setLandscape(bool value) async {
     _state = _state.copyWith(landscape: value);
     await _repo.save(_state);

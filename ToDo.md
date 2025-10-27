@@ -21,3 +21,5 @@ video çekerken geri tuşuna basınca kayıt devam ediyor. düzelt.
 video kaydettikten sonra bir bozukluk oluyor.
 
 takvimi sağa sola kaydırarak da gidlisn.
+
+paylaşma seçeneği

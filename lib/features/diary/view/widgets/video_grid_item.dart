@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 import '../../model/mood.dart';
 import '../player_page.dart';
@@ -23,105 +24,112 @@ class VideoGridItem extends StatelessWidget {
     final moods = (entry.moods as List<Mood>?) ?? [];
     final rating = entry.rating as int?;
 
-    return GestureDetector(
-      onTap: () => Navigator.of(context).pushNamed(
-        PlayerPage.route,
-        arguments: PlayerPageArgs(path: path, title: title),
+    return Slidable(
+      key: ValueKey(path),
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        children: [SlidableAction(onPressed: (context) => onDelete(), backgroundColor: Colors.red, foregroundColor: Colors.white, icon: Icons.delete, label: 'Delete', borderRadius: BorderRadius.circular(16))],
       ),
-      onLongPress: () => _openEditBottomSheet(context),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.dividerColor),
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).pushNamed(
+          PlayerPage.route,
+          arguments: PlayerPageArgs(path: path, title: title),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Stack(
-            children: [
-              // Thumbnail - full container
-              Positioned.fill(
-                child: thumb != null
-                    ? Image.file(File(thumb), fit: BoxFit.cover)
-                    : Container(
-                        color: Colors.grey[200],
-                        child: Icon(Icons.videocam_outlined, size: 48, color: Colors.grey[400]),
-                      ),
-              ),
-              // Gradient overlay
-              Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black.withAlpha(150)], stops: const [0.5, 1.0]),
+        onLongPress: () => _openEditBottomSheet(context),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: theme.dividerColor),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Stack(
+              children: [
+                // Thumbnail - full container
+                Positioned.fill(
+                  child: thumb != null
+                      ? Image.file(File(thumb), fit: BoxFit.cover)
+                      : Container(
+                          color: Colors.grey[200],
+                          child: Icon(Icons.videocam_outlined, size: 48, color: Colors.grey[400]),
+                        ),
+                ),
+                // Gradient overlay
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black.withAlpha(150)], stops: const [0.5, 1.0]),
+                    ),
                   ),
                 ),
-              ),
-              // Info overlay at bottom
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Title
-                      Text(
-                        title?.isNotEmpty == true ? title! : 'Untitled',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                          shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+                // Info overlay at bottom
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Title
+                        Text(
+                          title?.isNotEmpty == true ? title! : 'Untitled',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                            shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      // Date
-                      Text(
-                        _formatDate(date),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.white70,
-                          shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+                        const SizedBox(height: 4),
+                        // Date
+                        Text(
+                          _formatDate(date),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.white70,
+                            shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      // Moods and Rating
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Moods
-                          if (moods.isNotEmpty)
-                            Expanded(
-                              child: Wrap(spacing: 2, children: moods.take(3).map((mood) => Text(mood.emoji, style: const TextStyle(fontSize: 14))).toList()),
-                            ),
-                          // Rating
-                          if ((rating ?? 0) > 0)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(color: Colors.amber.withAlpha(230), borderRadius: BorderRadius.circular(8)),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.star, size: 12, color: Colors.white),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    '$rating',
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
-                                  ),
-                                ],
+                        const SizedBox(height: 6),
+                        // Moods and Rating
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Moods
+                            if (moods.isNotEmpty)
+                              Expanded(
+                                child: Wrap(spacing: 2, children: moods.take(3).map((mood) => Text(mood.emoji, style: const TextStyle(fontSize: 14))).toList()),
                               ),
-                            ),
-                        ],
-                      ),
-                    ],
+                            // Rating
+                            if ((rating ?? 0) > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: Colors.amber.withAlpha(230), borderRadius: BorderRadius.circular(8)),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.star, size: 12, color: Colors.white),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      '$rating',
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
