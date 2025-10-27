@@ -138,8 +138,8 @@ class VideoGridItem extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => SizedBox(
-        height: MediaQuery.of(context).size.height * 0.85,
-        child: VideoEditBottomSheet(currentTitle: title ?? '', currentRating: rating, currentMoods: moods),
+        height: MediaQuery.of(context).size.height * 0.7,
+        child: VideoEditBottomSheet(currentTitle: title ?? '', currentRating: rating, currentMoods: moods, showDeleteButton: true),
       ),
     );
 

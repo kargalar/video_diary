@@ -3,12 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../model/mood.dart';
 import '../viewmodel/diary_view_model.dart';
-import 'recording_page.dart';
 import 'widgets/compact_calendar.dart';
 import 'widgets/video_grid_item.dart';
 import 'widgets/video_dialogs.dart';
-import 'widgets/video_edit_bottom_sheet.dart';
-import '../../settings/view/settings_page.dart';
+import 'widgets/bottom_action_buttons.dart';
 
 class DiaryPage extends StatefulWidget {
   const DiaryPage({super.key});
@@ -35,7 +33,7 @@ class _DiaryPageState extends State<DiaryPage> {
             children: [
               // Calendar
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                padding: const EdgeInsets.all(4),
                 child: CompactCalendar(entries: vm.entries, currentStreak: vm.currentStreak, vm: vm),
               ),
               // Videos grid
@@ -44,91 +42,7 @@ class _DiaryPageState extends State<DiaryPage> {
           ),
         ),
       ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Streak indicator
-            FloatingActionButton.extended(
-              onPressed: null, // Non-interactive
-              backgroundColor: Colors.white,
-              icon: const Icon(Icons.local_fire_department, color: Colors.orange),
-              label: Text(
-                '${vm.currentStreak} day${vm.currentStreak != 1 ? 's' : ''}',
-                style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Start Recording button
-            FloatingActionButton.extended(
-              onPressed: () async {
-                final filePath = await Navigator.of(context).pushNamed(RecordingPage.route);
-                if (!mounted) return;
-
-                // If a video was recorded, show the edit bottom sheet
-                if (filePath != null && filePath is String) {
-                  // Get the latest entry
-                  final latestEntry = vm.entries.isNotEmpty ? vm.entries.first : null;
-                  if (latestEntry == null) return;
-
-                  final result = await showModalBottomSheet<Map<String, dynamic>>(
-                    // ignore: use_build_context_synchronously
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    isDismissible: false,
-                    enableDrag: false,
-                    builder: (context) => PopScope(
-                      canPop: false,
-                      child: SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.85,
-                        child: VideoEditBottomSheet(currentTitle: '', currentRating: null, currentMoods: const [], showCloseButton: false),
-                      ),
-                    ),
-                  );
-
-                  if (result != null) {
-                    // Save the metadata
-                    final title = result['title'] as String;
-                    final rating = result['rating'] as int?;
-                    final moods = result['moods'] as List<dynamic>;
-
-                    if (title.trim().isNotEmpty) {
-                      await vm.renameByPath(latestEntry.path, title.trim());
-                    }
-
-                    if (rating != null && rating > 0) {
-                      await vm.setRatingForEntry(latestEntry.path, rating.clamp(1, 5));
-                    }
-
-                    if (moods.isNotEmpty) {
-                      await vm.setMoodsForEntry(latestEntry.path, moods.cast());
-                    }
-                  } else {
-                    // User cancelled - delete the video
-                    await vm.deleteByPath(latestEntry.path);
-                  }
-                }
-              },
-              icon: const Icon(Icons.fiber_manual_record, size: 16, color: Colors.black87),
-              backgroundColor: Colors.white,
-              label: const Text(
-                'Start Recording',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: Colors.black87),
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Settings button
-            FloatingActionButton(
-              onPressed: () => Navigator.of(context).pushNamed(SettingsPage.route),
-              backgroundColor: Colors.white,
-              tooltip: 'Settings',
-              child: const Icon(Icons.settings, color: Colors.black87),
-            ),
-          ],
-        ),
-      ),
+      floatingActionButton: const BottomActionButtons(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
@@ -151,6 +65,7 @@ class _DiaryGridState extends State<_DiaryGrid> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            SizedBox(height: 80),
             Icon(Icons.video_library_outlined, size: 64, color: Colors.grey[300]),
             const SizedBox(height: 16),
             Text(
