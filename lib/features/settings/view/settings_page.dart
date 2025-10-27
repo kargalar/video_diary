@@ -29,38 +29,40 @@ class SettingsPage extends StatelessWidget {
           SwitchListTile(secondary: const Icon(Icons.screen_rotation), title: const Text('Landscape Recording'), value: state.landscape, onChanged: (v) => vm.setLandscape(v)),
           const Divider(height: 32),
           // Reminder Section
-          SwitchListTile(
-            secondary: const Icon(Icons.notifications_active),
+          ListTile(
+            leading: const Icon(Icons.notifications_active),
             title: const Text('Daily Reminder'),
-            subtitle: Text(state.reminderEnabled ? 'Every day at ${timeOfDay.format(context)}' : 'Off'),
-            value: state.reminderEnabled,
-            onChanged: (v) async {
-              final success = await vm.setReminderEnabled(v);
-              if (!success && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notification permission required. Please grant permission in app settings.')));
-              }
-            },
-          ),
-          if (state.reminderEnabled) ...[
-            const SizedBox(height: 8),
-            ListTile(
-              leading: const SizedBox(width: 40), // Alignment with switch
-              title: const Text('Reminder Time'),
-              subtitle: Text(timeOfDay.format(context)),
-              trailing: ElevatedButton(
-                onPressed: () async {
-                  final picked = await showTimePicker(context: context, initialTime: timeOfDay);
-                  if (picked != null) {
-                    await vm.setReminder(picked.hour, picked.minute);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reminder time updated')));
+            subtitle: state.reminderEnabled ? Text('Every day at ${timeOfDay.format(context)}') : const Text('Off'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (state.reminderEnabled) ...[
+                  ElevatedButton(
+                    onPressed: () async {
+                      final picked = await showTimePicker(context: context, initialTime: timeOfDay);
+                      if (picked != null) {
+                        await vm.setReminder(picked.hour, picked.minute);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reminder time updated')));
+                        }
+                      }
+                    },
+                    child: Text(timeOfDay.format(context)),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Switch(
+                  value: state.reminderEnabled,
+                  onChanged: (v) async {
+                    final success = await vm.setReminderEnabled(v);
+                    if (!success && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notification permission required. Please grant permission in app settings.')));
                     }
-                  }
-                },
-                child: const Text('Change'),
-              ),
+                  },
+                ),
+              ],
             ),
-          ],
+          ),
           const SizedBox(height: 12),
           const SizedBox(height: 12),
           Padding(

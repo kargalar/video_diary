@@ -65,13 +65,13 @@ class VideoDiaryApp extends StatelessWidget {
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
                 elevation: 0,
-                backgroundColor: const Color(0xFFE0E0E0),
-                foregroundColor: const Color(0xFF1A1A1A),
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               ),
             ),
-            iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(foregroundColor: const Color(0xFFB0B0B0))),
+            iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(foregroundColor: const Color(0xFFE0E0E0))),
           ),
           themeMode: settings.state.darkMode ? ThemeMode.dark : ThemeMode.light,
           routes: {'/': (_) => const DiaryPage()},

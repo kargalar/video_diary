@@ -28,7 +28,6 @@ class _DiaryPageState extends State<DiaryPage> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<DiaryViewModel>();
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Daily', style: TextStyle(fontWeight: FontWeight.w300, letterSpacing: 1.2)),
@@ -46,74 +45,62 @@ class _DiaryPageState extends State<DiaryPage> {
           Expanded(child: _DiaryList(entries: vm.entries)),
         ],
       ),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(16)),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: () async {
-              final filePath = await Navigator.of(context).pushNamed(RecordingPage.route);
-              if (!mounted) return;
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: ElevatedButton.icon(
+          onPressed: () async {
+            final filePath = await Navigator.of(context).pushNamed(RecordingPage.route);
+            if (!mounted) return;
 
-              // If a video was recorded, show the edit bottom sheet
-              if (filePath != null && filePath is String) {
-                // Get the latest entry
-                final latestEntry = vm.entries.isNotEmpty ? vm.entries.first : null;
-                if (latestEntry == null) return;
+            // If a video was recorded, show the edit bottom sheet
+            if (filePath != null && filePath is String) {
+              // Get the latest entry
+              final latestEntry = vm.entries.isNotEmpty ? vm.entries.first : null;
+              if (latestEntry == null) return;
 
-                final result = await showModalBottomSheet<Map<String, dynamic>>(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  isDismissible: false,
-                  enableDrag: false,
-                  builder: (context) => PopScope(
-                    canPop: false,
-                    child: SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.85,
-                      child: VideoEditBottomSheet(currentTitle: '', currentRating: null, currentMoods: const [], showCloseButton: false),
-                    ),
+              final result = await showModalBottomSheet<Map<String, dynamic>>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                isDismissible: false,
+                enableDrag: false,
+                builder: (context) => PopScope(
+                  canPop: false,
+                  child: SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.85,
+                    child: VideoEditBottomSheet(currentTitle: '', currentRating: null, currentMoods: const [], showCloseButton: false),
                   ),
-                );
+                ),
+              );
 
-                if (result != null) {
-                  // Save the metadata
-                  final title = result['title'] as String;
-                  final rating = result['rating'] as int?;
-                  final moods = result['moods'] as List<dynamic>;
+              if (result != null) {
+                // Save the metadata
+                final title = result['title'] as String;
+                final rating = result['rating'] as int?;
+                final moods = result['moods'] as List<dynamic>;
 
-                  if (title.trim().isNotEmpty) {
-                    await vm.renameByPath(latestEntry.path, title.trim());
-                  }
-
-                  if (rating != null && rating > 0) {
-                    await vm.setRatingForEntry(latestEntry.path, rating.clamp(1, 5));
-                  }
-
-                  if (moods.isNotEmpty) {
-                    await vm.setMoodsForEntry(latestEntry.path, moods.cast());
-                  }
-                } else {
-                  // User cancelled - delete the video
-                  await vm.deleteByPath(latestEntry.path);
+                if (title.trim().isNotEmpty) {
+                  await vm.renameByPath(latestEntry.path, title.trim());
                 }
+
+                if (rating != null && rating > 0) {
+                  await vm.setRatingForEntry(latestEntry.path, rating.clamp(1, 5));
+                }
+
+                if (moods.isNotEmpty) {
+                  await vm.setMoodsForEntry(latestEntry.path, moods.cast());
+                }
+              } else {
+                // User cancelled - delete the video
+                await vm.deleteByPath(latestEntry.path);
               }
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.fiber_manual_record, size: 16, color: theme.colorScheme.onPrimary),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Start Recording',
-                    style: TextStyle(color: theme.colorScheme.onPrimary, fontSize: 15, fontWeight: FontWeight.w500, letterSpacing: 0.5),
-                  ),
-                ],
-              ),
-            ),
+            }
+          },
+          icon: const Icon(Icons.fiber_manual_record, size: 16),
+          label: const Text('Start Recording', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
         ),
       ),

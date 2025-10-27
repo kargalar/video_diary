@@ -171,15 +171,10 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
               child: widget.showCloseButton
                   ? SizedBox(
                       width: double.infinity,
-                      child: FilledButton(
+                      child: ElevatedButton(
                         onPressed: () {
                           Navigator.pop(context, {'title': _titleController.text.trim(), 'rating': _rating == 0 ? null : _rating, 'moods': _selectedMoods.toList()});
                         },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF2C2C2C),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
                         child: const Text('Save', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
                       ),
                     )
@@ -189,27 +184,19 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                           child: OutlinedButton(
                             onPressed: () => Navigator.pop(context), // Cancel - returns null
                             style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: Colors.grey[400]!),
+                              side: BorderSide(color: theme.dividerColor),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               padding: const EdgeInsets.symmetric(vertical: 16),
                             ),
-                            child: Text(
-                              'Cancel',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: Colors.grey[700]),
-                            ),
+                            child: const Text('Cancel', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: FilledButton(
+                          child: ElevatedButton(
                             onPressed: () {
                               Navigator.pop(context, {'title': _titleController.text.trim(), 'rating': _rating == 0 ? null : _rating, 'moods': _selectedMoods.toList()});
                             },
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF2C2C2C),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
                             child: const Text('Save', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
                           ),
                         ),
