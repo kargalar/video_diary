@@ -21,3 +21,5 @@ takvimde bottom streak durumunu göster. gaçıncı günde olduğunu
 arka kamera açılsın??
 
 1 günde çekilen birden falza video klasör olar kgösterilsin??
+
+video kayderken ve izlerken ekran dönmeden yapabilri miyiz.

@@ -60,13 +60,6 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle bar
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
-            ),
             // Header
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
@@ -74,12 +67,6 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                 children: [
                   Expanded(
                     child: Text('Edit Diary', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w500, letterSpacing: 0.5)),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      Navigator.pop(context, _getResult());
-                    },
                   ),
                 ],
               ),
