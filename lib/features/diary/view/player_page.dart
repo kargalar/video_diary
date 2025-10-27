@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -23,11 +24,15 @@ class _PlayerPageState extends State<PlayerPage> {
   VideoPlayerController? _controller;
   bool _isError = false;
   bool _forcedLandscape = false;
+  bool _isSpeedUp = false;
+  bool _showControls = true;
+  Timer? _hideTimer;
 
   @override
   void initState() {
     super.initState();
     _init();
+    _startHideTimer();
   }
 
   Future<void> _init() async {
@@ -52,8 +57,23 @@ class _PlayerPageState extends State<PlayerPage> {
     }
   }
 
+  void _startHideTimer() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() => _showControls = false);
+      }
+    });
+  }
+
+  void _showControlsTemporarily() {
+    setState(() => _showControls = true);
+    _startHideTimer();
+  }
+
   @override
   void dispose() {
+    _hideTimer?.cancel();
     _controller?.dispose();
     if (_forcedLandscape) {
       // Restore app-wide portrait lock when leaving the player
@@ -74,47 +94,161 @@ class _PlayerPageState extends State<PlayerPage> {
             )
           : _controller == null
           ? const Center(child: CircularProgressIndicator())
-          : Stack(
-              children: [
-                Positioned.fill(
-                  child: Center(
-                    child: FittedBox(
-                      fit: BoxFit.cover, // fill screen, preserve aspect ratio
-                      child: SizedBox(width: _controller!.value.size.width, height: _controller!.value.size.height, child: VideoPlayer(_controller!)),
+          : GestureDetector(
+              onTap: _showControlsTemporarily,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Center(
+                      child: FittedBox(
+                        fit: BoxFit.cover, // fill screen, preserve aspect ratio
+                        child: SizedBox(width: _controller!.value.size.width, height: _controller!.value.size.height, child: VideoPlayer(_controller!)),
+                      ),
                     ),
                   ),
-                ),
-                Positioned(
-                  left: 8,
-                  right: 8,
-                  top: 8,
-                  child: SafeArea(
-                    bottom: false,
-                    child: Row(
-                      children: [
-                        Material(
-                          color: Colors.black45,
-                          shape: const CircleBorder(),
-                          child: IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.white),
-                            onPressed: () => Navigator.of(context).pop(),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.white70, fontSize: 16),
-                          ),
-                        ),
-                      ],
+                  // Right half for 2x speed
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: MediaQuery.of(context).size.width * 0.3,
+                    child: GestureDetector(
+                      onLongPressStart: (_) async {
+                        setState(() => _isSpeedUp = true);
+                        await _controller!.setPlaybackSpeed(2.0);
+                      },
+                      onLongPressEnd: (_) async {
+                        setState(() => _isSpeedUp = false);
+                        await _controller!.setPlaybackSpeed(1.0);
+                      },
+                      child: Container(
+                        color: Colors.transparent,
+                        child: _isSpeedUp
+                            ? const Center(
+                                child: Text(
+                                  '2x',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    shadows: [Shadow(blurRadius: 8, color: Colors.black)],
+                                  ),
+                                ),
+                              )
+                            : null,
+                      ),
                     ),
                   ),
-                ),
-                Positioned(left: 0, right: 0, bottom: 0, child: _Controls(controller: _controller!)),
-              ],
+                  // Center controls
+                  AnimatedOpacity(
+                    opacity: _showControls ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // 10 seconds backward
+                          Material(
+                            color: Colors.transparent,
+                            shape: const CircleBorder(),
+                            child: IconButton(
+                              icon: const Icon(Icons.replay_10, color: Colors.white),
+                              iconSize: 40,
+                              onPressed: () async {
+                                final current = _controller!.value.position;
+                                final target = current - const Duration(seconds: 10);
+                                await _controller!.seekTo(target < Duration.zero ? Duration.zero : target);
+                                _showControlsTemporarily();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          // Play/Pause
+                          Material(
+                            color: Colors.transparent,
+                            shape: const CircleBorder(),
+                            child: IconButton(
+                              icon: Icon(_controller!.value.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
+                              iconSize: 56,
+                              onPressed: () async {
+                                if (_controller!.value.isPlaying) {
+                                  await _controller!.pause();
+                                } else {
+                                  await _controller!.play();
+                                }
+                                setState(() {});
+                                _showControlsTemporarily();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          // 10 seconds forward
+                          Material(
+                            color: Colors.transparent,
+                            shape: const CircleBorder(),
+                            child: IconButton(
+                              icon: const Icon(Icons.forward_10, color: Colors.white),
+                              iconSize: 40,
+                              onPressed: () async {
+                                final current = _controller!.value.position;
+                                final duration = _controller!.value.duration;
+                                final target = current + const Duration(seconds: 10);
+                                await _controller!.seekTo(target > duration ? duration : target);
+                                _showControlsTemporarily();
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Top bar (back button and title)
+                  Positioned(
+                    left: 8,
+                    right: 8,
+                    top: 8,
+                    child: AnimatedOpacity(
+                      opacity: _showControls ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: SafeArea(
+                        bottom: false,
+                        child: Row(
+                          children: [
+                            Material(
+                              color: Colors.black45,
+                              shape: const CircleBorder(),
+                              child: IconButton(
+                                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                                onPressed: () => Navigator.of(context).pop(),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Colors.white70, fontSize: 16),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Bottom controls
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: AnimatedOpacity(
+                      opacity: _showControls ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: _Controls(controller: _controller!, onInteraction: _showControlsTemporarily),
+                    ),
+                  ),
+                ],
+              ),
             ),
     );
   }
@@ -122,7 +256,8 @@ class _PlayerPageState extends State<PlayerPage> {
 
 class _Controls extends StatefulWidget {
   final VideoPlayerController controller;
-  const _Controls({required this.controller});
+  final VoidCallback onInteraction;
+  const _Controls({required this.controller, required this.onInteraction});
 
   @override
   State<_Controls> createState() => _ControlsState();
@@ -164,63 +299,37 @@ class _ControlsState extends State<_Controls> {
 
   @override
   Widget build(BuildContext context) {
-    final isPlaying = widget.controller.value.isPlaying;
     final duration = widget.controller.value.duration;
     final position = widget.controller.value.position;
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 8),
         color: Colors.transparent, // transparent overlay over video
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
           children: [
-            Row(
-              children: [
-                IconButton(
-                  color: Colors.white,
-                  icon: Icon(isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill),
-                  iconSize: 36,
-                  onPressed: () async {
-                    if (isPlaying) {
-                      await widget.controller.pause();
-                    } else {
-                      await widget.controller.play();
-                    }
-                    setState(() {});
-                  },
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Slider(
-                        value: _sliderValue.clamp(0, 1),
-                        min: 0,
-                        max: 1,
-                        activeColor: Colors.white,
-                        inactiveColor: Colors.white38,
-                        onChangeStart: (_) => setState(() => _seeking = true),
-                        onChanged: (v) => setState(() => _sliderValue = v),
-                        onChangeEnd: (v) async {
-                          final target = Duration(milliseconds: (duration.inMilliseconds * v).round());
-                          await widget.controller.seekTo(target);
-                          setState(() => _seeking = false);
-                        },
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(_fmt(position), style: const TextStyle(color: Colors.white70)),
-                          Text(_fmt(duration), style: const TextStyle(color: Colors.white70)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            Text(_fmt(position), style: const TextStyle(color: Colors.white70)),
+            Expanded(
+              child: Slider(
+                value: _sliderValue.clamp(0, 1),
+                min: 0,
+                max: 1,
+                activeColor: Colors.white,
+                inactiveColor: Colors.white38,
+                onChangeStart: (_) {
+                  setState(() => _seeking = true);
+                  widget.onInteraction();
+                },
+                onChanged: (v) => setState(() => _sliderValue = v),
+                onChangeEnd: (v) async {
+                  final target = Duration(milliseconds: (duration.inMilliseconds * v).round());
+                  await widget.controller.seekTo(target);
+                  setState(() => _seeking = false);
+                  widget.onInteraction();
+                },
+              ),
             ),
+            Text(_fmt(duration), style: const TextStyle(color: Colors.white70)),
           ],
         ),
       ),

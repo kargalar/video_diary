@@ -2,12 +2,6 @@ takvimi geliştir. puan ve ruh halleri daha düzgün belirtilsin
 
 home page için her satıda bir gün yerine her satırda 2- 3 gün tasrımını dene
 
-video izlerken sağa basılı tutunca 2x olsun. play butonunusayğında ve solunda 10 saniye ileri geri sarma butonu ekle.
-
-ana safadaki video itemların tasrımı güncelleyelim. her satırda 1 item olmak yerine her satırda 2 item olsnu
-
-videonunu boyutu bilgisi ayarlardan açılıp kapatılabilsin.
-
 bir de not kısmı ekle onu da göster belki.
 
 mood ve puan video çektikten sonra kaydedilmyor.
@@ -20,6 +14,10 @@ takvimde bottom streak durumunu göster. gaçıncı günde olduğunu
 
 arka kamera açılsın??
 
-1 günde çekilen birden falza video klasör olar kgösterilsin??
-
 video kayderken ve izlerken ekran dönmeden yapabilri miyiz.
+
+video çekerken geri tuşuna basınca kayıt devam ediyor. düzelt.
+
+video kaydettikten sonra bir bozukluk oluyor.
+
+takvimi sağa sola kaydırarak da gidlisn.
