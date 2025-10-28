@@ -27,8 +27,8 @@ class NotificationService {
     // timezone init
     try {
       tz.initializeTimeZones();
-      final name = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(name));
+      final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier));
     } catch (_) {
       // Fallback
       tz.setLocalLocation(tz.getLocation('UTC'));
@@ -51,16 +51,7 @@ class NotificationService {
     await _ensureAndroidPermissions();
     // Prefer inexact scheduling to avoid exact alarm restrictions; still repeats daily at selected time
     await _plugin.cancel(1001);
-    await _plugin.zonedSchedule(
-      1001,
-      'Video Diary',
-      'Don\'t forget to record today\'s video',
-      scheduled,
-      details,
-      androidScheduleMode: AndroidScheduleMode.inexact,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
+    await _plugin.zonedSchedule(1001, 'Video Diary', 'Don\'t forget to record today\'s video', scheduled, details, androidScheduleMode: AndroidScheduleMode.inexact, matchDateTimeComponents: DateTimeComponents.time);
   }
 
   Future<void> cancelAll() => _plugin.cancelAll();

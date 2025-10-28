@@ -239,7 +239,7 @@ class _PlayerPageState extends State<PlayerPage> {
                                 icon: const Icon(Icons.share, color: Colors.white),
                                 onPressed: () async {
                                   final file = File(widget.args.path);
-                                  await Share.shareXFiles([XFile(file.path)], text: title);
+                                  await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], text: title));
                                 },
                               ),
                             ),
