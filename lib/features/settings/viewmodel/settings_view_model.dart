@@ -20,9 +20,7 @@ class SettingsViewModel extends ChangeNotifier {
   }
 
   Future<void> pickDirectory() async {
-    final selected = await _storage.pickDirectory(
-      initialDirectory: state.storageDirectory,
-    );
+    final selected = await _storage.pickDirectory(initialDirectory: state.storageDirectory);
     _state = _state.copyWith(storageDirectory: selected);
     await _repo.save(_state);
     notifyListeners();
@@ -78,5 +76,15 @@ class SettingsViewModel extends ChangeNotifier {
 
   Future<bool> clearAllVideos(Future<bool> Function() clearAllCallback) async {
     return await clearAllCallback();
+  }
+
+  /// Test method for debug mode - sends a test notification immediately
+  Future<void> sendTestNotification() async {
+    try {
+      await _notifier.init();
+      await _notifier.sendTestNotification();
+    } catch (e) {
+      debugPrint('Error sending test notification: $e');
+    }
   }
 }

@@ -1,4 +1,4 @@
-package com.example.video_diary
+package app.videodiary
 
 import io.flutter.embedding.android.FlutterActivity
 

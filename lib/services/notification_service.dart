@@ -17,7 +17,7 @@ class NotificationService {
     if (_initialized) return;
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iOS = DarwinInitializationSettings();
-    const windows = WindowsInitializationSettings(appName: 'Video Diary', appUserModelId: 'com.kargalar.video_diary', guid: 'e0e87d60-3b0f-4ff2-8d85-0a9c8ebdb5a9');
+    const windows = WindowsInitializationSettings(appName: 'Video Diary', appUserModelId: 'app.videodiary', guid: 'e0e87d60-3b0f-4ff2-8d85-0a9c8ebdb5a9');
     const initSettings = InitializationSettings(android: android, iOS: iOS, windows: windows);
     await _plugin.initialize(initSettings);
 
@@ -57,6 +57,18 @@ class NotificationService {
   }
 
   Future<void> cancelAll() => _plugin.cancelAll();
+
+  /// Send an immediate test notification (for debugging)
+  Future<void> sendTestNotification() async {
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(_channelId, _channelName, channelDescription: 'Daily reminder to record your video diary', importance: Importance.max, priority: Priority.high),
+      iOS: DarwinNotificationDetails(),
+      windows: WindowsNotificationDetails(),
+    );
+
+    await _ensureAndroidPermissions();
+    await _plugin.show(9999, 'Video Diary Test', 'This is a test notification. Your daily reminders are working!', details);
+  }
 
   Future<Map<String, dynamic>> diagnostics() async {
     final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();

@@ -48,6 +48,7 @@ class _RecordingPageState extends State<RecordingPage> {
       if (!mounted) return;
       await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
       await vm.disposeCamera();
+      // ignore: use_build_context_synchronously
       final nav = Navigator.of(context);
       if (returnFilePath) {
         nav.pop(filePath);
@@ -222,6 +223,7 @@ class _RecordingPageState extends State<RecordingPage> {
                                 await vm.disposeCamera();
                                 await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
                                 if (!mounted) return;
+                                // ignore: use_build_context_synchronously
                                 Navigator.of(context).pop();
                               }
                             },
