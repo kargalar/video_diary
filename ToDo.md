@@ -12,4 +12,4 @@ video kaydettikten sonra bir bozukluk oluyor.
 
 takvimi sağa sola kaydırarak da gidlisn.
 
-start recorfing altta tek kalmalı. streak ve ayarları taşı.
+start recorfing altta tek kalmalı. streak ve ayarları taşı.a
