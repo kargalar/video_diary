@@ -4,10 +4,6 @@ home page için her satıda bir gün yerine her satırda 2- 3 gün tasrımını 
 
 bir de not kısmı ekle onu da göster belki.
 
-mood ve puan video çektikten sonra kaydedilmyor.
-
-tüm metinler ingilzice
-
 ana sayfadaki streak ile ilgili şeyler ayarlardan akaptılabilsin.
 
 takvimde bottom streak durumunu göster. gaçıncı günde olduğunu

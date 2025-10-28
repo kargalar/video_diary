@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../model/mood.dart';
 import '../../viewmodel/diary_view_model.dart';
 
 class CompactCalendar extends StatefulWidget {
@@ -7,7 +8,12 @@ class CompactCalendar extends StatefulWidget {
   final int currentStreak;
   final DiaryViewModel vm;
 
-  const CompactCalendar({super.key, required this.entries, required this.currentStreak, required this.vm});
+  const CompactCalendar({
+    super.key,
+    required this.entries,
+    required this.currentStreak,
+    required this.vm,
+  });
 
   @override
   State<CompactCalendar> createState() => _CompactCalendarState();
@@ -43,9 +49,32 @@ class _CompactCalendarState extends State<CompactCalendar> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(icon: const Icon(Icons.chevron_left, size: 20), onPressed: () => setState(() => _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1, 1))),
-              Text(monthName, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500)),
-              IconButton(icon: const Icon(Icons.chevron_right, size: 20), onPressed: () => setState(() => _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 1))),
+              IconButton(
+                icon: const Icon(Icons.chevron_left, size: 20),
+                onPressed: () => setState(
+                  () => _currentMonth = DateTime(
+                    _currentMonth.year,
+                    _currentMonth.month - 1,
+                    1,
+                  ),
+                ),
+              ),
+              Text(
+                monthName,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right, size: 20),
+                onPressed: () => setState(
+                  () => _currentMonth = DateTime(
+                    _currentMonth.year,
+                    _currentMonth.month + 1,
+                    1,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -54,7 +83,12 @@ class _CompactCalendarState extends State<CompactCalendar> {
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 7, mainAxisSpacing: 4, crossAxisSpacing: 4, childAspectRatio: 1),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              mainAxisSpacing: 4,
+              crossAxisSpacing: 4,
+              childAspectRatio: 1,
+            ),
             itemCount: days.length,
             itemBuilder: (context, index) {
               final d = days[index];
@@ -64,8 +98,16 @@ class _CompactCalendarState extends State<CompactCalendar> {
               final hasEntries = byDay.containsKey(dayKey);
               final isCurrentMonth = d.month == _currentMonth.month;
               final rating = widget.vm.getDailyAverageRating(dayKey);
+              final moods = widget.vm.getMoodsForDay(dayKey);
 
-              return _CompactDayCell(date: d, isCurrentMonth: isCurrentMonth, isToday: isToday, hasEntries: hasEntries, rating: rating);
+              return _CompactDayCell(
+                date: d,
+                isCurrentMonth: isCurrentMonth,
+                isToday: isToday,
+                hasEntries: hasEntries,
+                rating: rating,
+                moods: moods,
+              );
             },
           ),
         ],
@@ -101,10 +143,24 @@ class _CompactCalendarState extends State<CompactCalendar> {
   }
 
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
-  bool _isSameDate(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
-  String _monthYearLabel(DateTime d) => '${_monthNameTr(d.month)} ${d.year}';
-  String _monthNameTr(int m) {
-    const names = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+  bool _isSameDate(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+  String _monthYearLabel(DateTime d) => '${_monthNameEn(d.month)} ${d.year}';
+  String _monthNameEn(int m) {
+    const names = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return names[m - 1];
   }
 }
@@ -112,12 +168,19 @@ class _CompactCalendarState extends State<CompactCalendar> {
 class _WeekdayHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    const days = ['P', 'S', 'Ç', 'P', 'C', 'C', 'P'];
+    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     return Row(
       children: List.generate(
         7,
         (i) => Expanded(
-          child: Center(child: Text(days[i], style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10))),
+          child: Center(
+            child: Text(
+              days[i],
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(fontSize: 10),
+            ),
+          ),
         ),
       ),
     );
@@ -130,8 +193,16 @@ class _CompactDayCell extends StatelessWidget {
   final bool isToday;
   final bool hasEntries;
   final int? rating;
+  final List<String> moods;
 
-  const _CompactDayCell({required this.date, required this.isCurrentMonth, required this.isToday, required this.hasEntries, this.rating});
+  const _CompactDayCell({
+    required this.date,
+    required this.isCurrentMonth,
+    required this.isToday,
+    required this.hasEntries,
+    this.rating,
+    this.moods = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -161,19 +232,56 @@ class _CompactDayCell extends StatelessWidget {
       }
     }
 
-    final fg = isCurrentMonth ? theme.textTheme.bodySmall?.color : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.3);
+    final fg = isCurrentMonth
+        ? theme.textTheme.bodySmall?.color
+        : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.3);
+
+    final moodEmojis = moods
+        .map((name) => Mood.fromString(name)?.emoji)
+        .whereType<String>()
+        .toList();
+    final displayEmojis = moodEmojis.take(3).toList();
+    final extraCount = moodEmojis.length - displayEmojis.length;
 
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
-        shape: BoxShape.circle,
-        border: isToday ? Border.all(color: theme.colorScheme.primary, width: 2) : null,
+        borderRadius: BorderRadius.circular(10),
+        border: isToday
+            ? Border.all(color: theme.colorScheme.primary, width: 2)
+            : null,
       ),
-      child: Center(
-        child: Text(
-          '${date.day}',
-          style: TextStyle(fontSize: 11, fontWeight: isToday ? FontWeight.bold : FontWeight.normal, color: fg),
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '${date.day}',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+              color: fg,
+            ),
+          ),
+          if (displayEmojis.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                displayEmojis.join(' '),
+                style: TextStyle(fontSize: 9, color: fg),
+              ),
+            ),
+            if (extraCount > 0)
+              Text(
+                '+$extraCount',
+                style: TextStyle(
+                  fontSize: 7,
+                  color: fg?.withValues(alpha: 0.7),
+                ),
+              ),
+          ],
+        ],
       ),
     );
   }

@@ -8,13 +8,26 @@ class VideoService {
   CameraController? _controller;
   List<CameraDescription>? _cameras;
 
-  Future<CameraController> initCamera({bool landscape = false, ResolutionPreset preset = ResolutionPreset.high}) async {
+  Future<CameraController> initCamera({
+    bool landscape = false,
+    ResolutionPreset preset = ResolutionPreset.high,
+  }) async {
     _cameras ??= await availableCameras();
-    final camera = _cameras!.firstWhere((c) => c.lensDirection == CameraLensDirection.front, orElse: () => _cameras!.first);
-    _controller = CameraController(camera, preset, enableAudio: true, imageFormatGroup: ImageFormatGroup.nv21);
+    final camera = _cameras!.firstWhere(
+      (c) => c.lensDirection == CameraLensDirection.front,
+      orElse: () => _cameras!.first,
+    );
+    _controller = CameraController(
+      camera,
+      preset,
+      enableAudio: true,
+      imageFormatGroup: ImageFormatGroup.nv21,
+    );
     await _controller!.initialize();
     if (landscape) {
-      await _controller!.lockCaptureOrientation(DeviceOrientation.landscapeLeft);
+      await _controller!.lockCaptureOrientation(
+        DeviceOrientation.landscapeLeft,
+      );
     } else {
       await _controller!.lockCaptureOrientation(DeviceOrientation.portraitUp);
     }

@@ -47,8 +47,12 @@ class _PlayerPageState extends State<PlayerPage> {
       await c.initialize();
       await c.setLooping(false);
       // If the video is landscape, rotate the UI to landscape for better viewing
-      if ((Platform.isAndroid || Platform.isIOS) && c.value.size.width > c.value.size.height) {
-        await SystemChrome.setPreferredOrientations(const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+      if ((Platform.isAndroid || Platform.isIOS) &&
+          c.value.size.width > c.value.size.height) {
+        await SystemChrome.setPreferredOrientations(const [
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
         _forcedLandscape = true;
       }
       setState(() => _controller = c);
@@ -78,7 +82,10 @@ class _PlayerPageState extends State<PlayerPage> {
     _controller?.dispose();
     if (_forcedLandscape) {
       // Restore app-wide portrait lock when leaving the player
-      SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+      SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
     }
     super.dispose();
   }
@@ -91,7 +98,10 @@ class _PlayerPageState extends State<PlayerPage> {
       backgroundColor: Colors.black,
       body: _isError
           ? const Center(
-              child: Text('Could not open video', style: TextStyle(color: Colors.white)),
+              child: Text(
+                'Could not open video',
+                style: TextStyle(color: Colors.white),
+              ),
             )
           : _controller == null
           ? const Center(child: CircularProgressIndicator())
@@ -103,7 +113,11 @@ class _PlayerPageState extends State<PlayerPage> {
                     child: Center(
                       child: FittedBox(
                         fit: BoxFit.cover, // fill screen, preserve aspect ratio
-                        child: SizedBox(width: _controller!.value.size.width, height: _controller!.value.size.height, child: VideoPlayer(_controller!)),
+                        child: SizedBox(
+                          width: _controller!.value.size.width,
+                          height: _controller!.value.size.height,
+                          child: VideoPlayer(_controller!),
+                        ),
                       ),
                     ),
                   ),
@@ -132,7 +146,12 @@ class _PlayerPageState extends State<PlayerPage> {
                                     color: Colors.white,
                                     fontSize: 32,
                                     fontWeight: FontWeight.bold,
-                                    shadows: [Shadow(blurRadius: 8, color: Colors.black)],
+                                    shadows: [
+                                      Shadow(
+                                        blurRadius: 8,
+                                        color: Colors.black,
+                                      ),
+                                    ],
                                   ),
                                 ),
                               )
@@ -153,12 +172,20 @@ class _PlayerPageState extends State<PlayerPage> {
                             color: Colors.transparent,
                             shape: const CircleBorder(),
                             child: IconButton(
-                              icon: const Icon(Icons.replay_10, color: Colors.white),
+                              icon: const Icon(
+                                Icons.replay_10,
+                                color: Colors.white,
+                              ),
                               iconSize: 40,
                               onPressed: () async {
                                 final current = _controller!.value.position;
-                                final target = current - const Duration(seconds: 10);
-                                await _controller!.seekTo(target < Duration.zero ? Duration.zero : target);
+                                final target =
+                                    current - const Duration(seconds: 10);
+                                await _controller!.seekTo(
+                                  target < Duration.zero
+                                      ? Duration.zero
+                                      : target,
+                                );
                                 _showControlsTemporarily();
                               },
                             ),
@@ -169,7 +196,12 @@ class _PlayerPageState extends State<PlayerPage> {
                             color: Colors.transparent,
                             shape: const CircleBorder(),
                             child: IconButton(
-                              icon: Icon(_controller!.value.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
+                              icon: Icon(
+                                _controller!.value.isPlaying
+                                    ? Icons.pause
+                                    : Icons.play_arrow,
+                                color: Colors.white,
+                              ),
                               iconSize: 56,
                               onPressed: () async {
                                 if (_controller!.value.isPlaying) {
@@ -188,13 +220,19 @@ class _PlayerPageState extends State<PlayerPage> {
                             color: Colors.transparent,
                             shape: const CircleBorder(),
                             child: IconButton(
-                              icon: const Icon(Icons.forward_10, color: Colors.white),
+                              icon: const Icon(
+                                Icons.forward_10,
+                                color: Colors.white,
+                              ),
                               iconSize: 40,
                               onPressed: () async {
                                 final current = _controller!.value.position;
                                 final duration = _controller!.value.duration;
-                                final target = current + const Duration(seconds: 10);
-                                await _controller!.seekTo(target > duration ? duration : target);
+                                final target =
+                                    current + const Duration(seconds: 10);
+                                await _controller!.seekTo(
+                                  target > duration ? duration : target,
+                                );
                                 _showControlsTemporarily();
                               },
                             ),
@@ -219,7 +257,10 @@ class _PlayerPageState extends State<PlayerPage> {
                               color: Colors.black45,
                               shape: const CircleBorder(),
                               child: IconButton(
-                                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                                icon: const Icon(
+                                  Icons.arrow_back,
+                                  color: Colors.white,
+                                ),
                                 onPressed: () => Navigator.of(context).pop(),
                               ),
                             ),
@@ -229,17 +270,28 @@ class _PlayerPageState extends State<PlayerPage> {
                                 title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Colors.white70, fontSize: 16),
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
                             Material(
                               color: Colors.black45,
                               shape: const CircleBorder(),
                               child: IconButton(
-                                icon: const Icon(Icons.share, color: Colors.white),
+                                icon: const Icon(
+                                  Icons.share,
+                                  color: Colors.white,
+                                ),
                                 onPressed: () async {
                                   final file = File(widget.args.path);
-                                  await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], text: title));
+                                  await SharePlus.instance.share(
+                                    ShareParams(
+                                      files: [XFile(file.path)],
+                                      text: title,
+                                    ),
+                                  );
                                 },
                               ),
                             ),
@@ -256,7 +308,10 @@ class _PlayerPageState extends State<PlayerPage> {
                     child: AnimatedOpacity(
                       opacity: _showControls ? 1.0 : 0.0,
                       duration: const Duration(milliseconds: 200),
-                      child: _Controls(controller: _controller!, onInteraction: _showControlsTemporarily),
+                      child: _Controls(
+                        controller: _controller!,
+                        onInteraction: _showControlsTemporarily,
+                      ),
                     ),
                   ),
                 ],
@@ -334,7 +389,9 @@ class _ControlsState extends State<_Controls> {
                 },
                 onChanged: (v) => setState(() => _sliderValue = v),
                 onChangeEnd: (v) async {
-                  final target = Duration(milliseconds: (duration.inMilliseconds * v).round());
+                  final target = Duration(
+                    milliseconds: (duration.inMilliseconds * v).round(),
+                  );
                   await widget.controller.seekTo(target);
                   setState(() => _seeking = false);
                   widget.onInteraction();

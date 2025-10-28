@@ -4,19 +4,34 @@ class DayData {
   final int? rating; // daily average rating 1..5
   final List<String> moods; // allow multiple moods per day
   final bool inStreak; // whether the day is part of current streak snapshot
-  DayData({this.rating, List<String>? moods, required this.inStreak}) : moods = moods ?? const [];
+  DayData({this.rating, List<String>? moods, required this.inStreak})
+    : moods = moods ?? const [];
 
   DayData copyWith({int? rating, List<String>? moods, bool? inStreak}) {
-    return DayData(rating: rating ?? this.rating, moods: moods ?? this.moods, inStreak: inStreak ?? this.inStreak);
+    return DayData(
+      rating: rating ?? this.rating,
+      moods: moods ?? this.moods,
+      inStreak: inStreak ?? this.inStreak,
+    );
   }
 
-  Map<String, dynamic> toJson() => {'rating': rating, 'moods': moods, 'inStreak': inStreak};
+  Map<String, dynamic> toJson() => {
+    'rating': rating,
+    'moods': moods,
+    'inStreak': inStreak,
+  };
 
   static DayData fromJson(Map json) {
     // Backward-compat: legacy 'mood' string
     final legacyMood = json['mood'] as String?;
-    final moods = (json['moods'] as List?)?.cast<String>() ?? (legacyMood != null ? [legacyMood] : <String>[]);
-    return DayData(rating: (json['rating'] as int?), moods: moods, inStreak: (json['inStreak'] as bool?) ?? false);
+    final moods =
+        (json['moods'] as List?)?.cast<String>() ??
+        (legacyMood != null ? [legacyMood] : <String>[]);
+    return DayData(
+      rating: (json['rating'] as int?),
+      moods: moods,
+      inStreak: (json['inStreak'] as bool?) ?? false,
+    );
   }
 }
 
@@ -31,7 +46,8 @@ class DayDataRepository {
     _inited = true;
   }
 
-  String keyFor(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  String keyFor(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   Future<DayData?> getDay(DateTime day) async {
     final box = Hive.box(_boxName);
@@ -54,7 +70,9 @@ class DayDataRepository {
 
   Future<void> setRating(DateTime day, int rating) async {
     final existing = await getDay(day);
-    final data = (existing ?? DayData(inStreak: false)).copyWith(rating: rating);
+    final data = (existing ?? DayData(inStreak: false)).copyWith(
+      rating: rating,
+    );
     await putDay(day, data);
   }
 
@@ -68,13 +86,17 @@ class DayDataRepository {
 
   Future<void> setMoods(DateTime day, List<String> moods) async {
     final existing = await getDay(day);
-    final data = (existing ?? DayData(inStreak: false)).copyWith(moods: List<String>.from(moods));
+    final data = (existing ?? DayData(inStreak: false)).copyWith(
+      moods: List<String>.from(moods),
+    );
     await putDay(day, data);
   }
 
   Future<void> clearMoods(DateTime day) async {
     final existing = await getDay(day);
-    final data = (existing ?? DayData(inStreak: false)).copyWith(moods: <String>[]);
+    final data = (existing ?? DayData(inStreak: false)).copyWith(
+      moods: <String>[],
+    );
     await putDay(day, data);
   }
 

@@ -12,7 +12,12 @@ class VideoGridItem extends StatelessWidget {
   final Function(Map<String, dynamic> updates) onEdit;
   final VoidCallback onDelete;
 
-  const VideoGridItem({super.key, required this.entry, required this.onEdit, required this.onDelete});
+  const VideoGridItem({
+    super.key,
+    required this.entry,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +33,16 @@ class VideoGridItem extends StatelessWidget {
       key: ValueKey(path),
       endActionPane: ActionPane(
         motion: const ScrollMotion(),
-        children: [SlidableAction(onPressed: (context) => onDelete(), backgroundColor: Colors.red, foregroundColor: Colors.white, icon: Icons.delete, label: 'Delete', borderRadius: BorderRadius.circular(16))],
+        children: [
+          SlidableAction(
+            onPressed: (context) => onDelete(),
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            icon: Icons.delete,
+            label: 'Delete',
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ],
       ),
       child: GestureDetector(
         onTap: () => Navigator.of(context).pushNamed(
@@ -51,14 +65,26 @@ class VideoGridItem extends StatelessWidget {
                       ? Image.file(File(thumb), fit: BoxFit.cover)
                       : Container(
                           color: Colors.grey[200],
-                          child: Icon(Icons.videocam_outlined, size: 48, color: Colors.grey[400]),
+                          child: Icon(
+                            Icons.videocam_outlined,
+                            size: 48,
+                            color: Colors.grey[400],
+                          ),
                         ),
                 ),
                 // Gradient overlay
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black.withAlpha(150)], stops: const [0.5, 1.0]),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withAlpha(150),
+                        ],
+                        stops: const [0.5, 1.0],
+                      ),
                     ),
                   ),
                 ),
@@ -80,7 +106,9 @@ class VideoGridItem extends StatelessWidget {
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
-                            shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+                            shadows: [
+                              Shadow(blurRadius: 4, color: Colors.black45),
+                            ],
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -92,7 +120,9 @@ class VideoGridItem extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 11,
                             color: Colors.white70,
-                            shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+                            shadows: [
+                              Shadow(blurRadius: 4, color: Colors.black45),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -103,21 +133,46 @@ class VideoGridItem extends StatelessWidget {
                             // Moods
                             if (moods.isNotEmpty)
                               Expanded(
-                                child: Wrap(spacing: 2, children: moods.take(3).map((mood) => Text(mood.emoji, style: const TextStyle(fontSize: 14))).toList()),
+                                child: Wrap(
+                                  spacing: 2,
+                                  children: moods
+                                      .take(3)
+                                      .map(
+                                        (mood) => Text(
+                                          mood.emoji,
+                                          style: const TextStyle(fontSize: 14),
+                                        ),
+                                      )
+                                      .toList(),
+                                ),
                               ),
                             // Rating
                             if ((rating ?? 0) > 0)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(color: Colors.amber.withAlpha(230), borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withAlpha(230),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.star, size: 12, color: Colors.white),
+                                    const Icon(
+                                      Icons.star,
+                                      size: 12,
+                                      color: Colors.white,
+                                    ),
                                     const SizedBox(width: 2),
                                     Text(
                                       '$rating',
-                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -148,7 +203,13 @@ class VideoGridItem extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (context) => SizedBox(
         height: MediaQuery.of(context).size.height * 0.7,
-        child: VideoEditBottomSheet(currentTitle: title ?? '', currentRating: rating, currentMoods: moods, showDeleteButton: true, currentDate: date),
+        child: VideoEditBottomSheet(
+          currentTitle: title ?? '',
+          currentRating: rating,
+          currentMoods: moods,
+          showDeleteButton: true,
+          currentDate: date,
+        ),
       ),
     );
 
@@ -171,7 +232,20 @@ class VideoGridItem extends StatelessWidget {
       return 'Yesterday';
     }
 
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     final monthName = monthNames[d.month - 1];
 
     if (d.year == now.year) {

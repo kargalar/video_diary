@@ -9,6 +9,9 @@ Future<void> main() async {
   // Ensure notifications/timezone are fully initialized before the app starts
   await NotificationService().init();
   // Lock the entire app to portrait by default; specific pages can override temporarily
-  SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+  SystemChrome.setPreferredOrientations(const [
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   runApp(const VideoDiaryApp());
 }

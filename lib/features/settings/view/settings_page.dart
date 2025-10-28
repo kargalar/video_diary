@@ -13,7 +13,10 @@ class SettingsPage extends StatelessWidget {
     final vm = context.watch<SettingsViewModel>();
     final diaryVm = context.watch<DiaryViewModel>();
     final state = vm.state;
-    final timeOfDay = TimeOfDay(hour: state.reminderHour, minute: state.reminderMinute);
+    final timeOfDay = TimeOfDay(
+      hour: state.reminderHour,
+      minute: state.reminderMinute,
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -24,27 +27,44 @@ class SettingsPage extends StatelessWidget {
             leading: const Icon(Icons.folder),
             title: const Text('Storage Folder'),
             subtitle: Text(state.storageDirectory ?? 'Not selected'),
-            trailing: ElevatedButton(onPressed: vm.pickDirectory, child: const Text('Select')),
+            trailing: ElevatedButton(
+              onPressed: vm.pickDirectory,
+              child: const Text('Select'),
+            ),
           ),
           const SizedBox(height: 12),
-          SwitchListTile(secondary: const Icon(Icons.screen_rotation), title: const Text('Landscape Recording'), value: state.landscape, onChanged: (v) => vm.setLandscape(v)),
+          SwitchListTile(
+            secondary: const Icon(Icons.screen_rotation),
+            title: const Text('Landscape Recording'),
+            value: state.landscape,
+            onChanged: (v) => vm.setLandscape(v),
+          ),
           const Divider(height: 32),
           // Reminder Section
           ListTile(
             leading: const Icon(Icons.notifications_active),
             title: const Text('Daily Reminder'),
-            subtitle: state.reminderEnabled ? Text('Every day at ${timeOfDay.format(context)}') : const Text('Off'),
+            subtitle: state.reminderEnabled
+                ? Text('Every day at ${timeOfDay.format(context)}')
+                : const Text('Off'),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (state.reminderEnabled) ...[
                   ElevatedButton(
                     onPressed: () async {
-                      final picked = await showTimePicker(context: context, initialTime: timeOfDay);
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: timeOfDay,
+                      );
                       if (picked != null) {
                         await vm.setReminder(picked.hour, picked.minute);
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reminder time updated')));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Reminder time updated'),
+                            ),
+                          );
                         }
                       }
                     },
@@ -57,7 +77,13 @@ class SettingsPage extends StatelessWidget {
                   onChanged: (v) async {
                     final success = await vm.setReminderEnabled(v);
                     if (!success && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notification permission required. Please grant permission in app settings.')));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Notification permission required. Please grant permission in app settings.',
+                          ),
+                        ),
+                      );
                     }
                   },
                 ),
@@ -68,13 +94,19 @@ class SettingsPage extends StatelessWidget {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text('When reminders are enabled, the app will send a notification at the selected time to record your daily video.', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+            child: Text(
+              'When reminders are enabled, the app will send a notification at the selected time to record your daily video.',
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ),
           ),
           const Divider(height: 32),
           // Clear All Videos Section
           ListTile(
             leading: const Icon(Icons.delete_forever, color: Colors.red),
-            title: const Text('Clear All Videos', style: TextStyle(color: Colors.red)),
+            title: const Text(
+              'Clear All Videos',
+              style: TextStyle(color: Colors.red),
+            ),
             subtitle: const Text('Delete all videos and reset all data'),
             trailing: ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -83,11 +115,18 @@ class SettingsPage extends StatelessWidget {
                   context: context,
                   builder: (context) => AlertDialog(
                     title: const Text('Clear All Videos'),
-                    content: const Text('This will permanently delete all your videos, thumbnails, and reset all ratings and streaks. This action cannot be undone. Are you sure?'),
+                    content: const Text(
+                      'This will permanently delete all your videos, thumbnails, and reset all ratings and streaks. This action cannot be undone. Are you sure?',
+                    ),
                     actions: [
-                      TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
                       TextButton(
-                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
                         onPressed: () => Navigator.of(context).pop(true),
                         child: const Text('Delete All'),
                       ),
@@ -97,7 +136,16 @@ class SettingsPage extends StatelessWidget {
                 if (confirmed == true) {
                   final success = await diaryVm.clearAll();
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(success ? 'All videos deleted successfully' : 'Failed to delete videos'), backgroundColor: success ? Colors.green : Colors.red));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          success
+                              ? 'All videos deleted successfully'
+                              : 'Failed to delete videos',
+                        ),
+                        backgroundColor: success ? Colors.green : Colors.red,
+                      ),
+                    );
                   }
                 }
               },

@@ -58,6 +58,7 @@ class BottomActionButtons extends StatelessWidget {
                 );
 
                 if (result != null) {
+                  var entryPath = latestEntry.path;
                   // Check if user discarded the video
                   if (result['discard'] == true) {
                     await vm.deleteByPath(latestEntry.path);
@@ -70,15 +71,18 @@ class BottomActionButtons extends StatelessWidget {
                   final moods = result['moods'] as List<dynamic>?;
 
                   if (title != null && title.trim().isNotEmpty) {
-                    await vm.renameByPath(latestEntry.path, title.trim());
+                    final updatedPath = await vm.renameByPath(entryPath, title.trim());
+                    if (updatedPath != null) {
+                      entryPath = updatedPath;
+                    }
                   }
 
                   if (rating != null) {
-                    await vm.setRatingForEntry(latestEntry.path, rating.clamp(1, 5));
+                    await vm.setRatingForEntry(entryPath, rating.clamp(1, 5));
                   }
 
                   if (moods != null && moods.isNotEmpty) {
-                    await vm.setMoodsForEntry(latestEntry.path, moods.cast());
+                    await vm.setMoodsForEntry(entryPath, moods.cast());
                   }
                 }
               }

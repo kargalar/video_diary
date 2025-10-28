@@ -224,18 +224,18 @@ class DiaryViewModel extends ChangeNotifier {
     await _video.dispose();
   }
 
-  Future<bool> renameByPath(String path, String newTitle) async {
+  Future<String?> renameByPath(String path, String newTitle) async {
     try {
       final idx = _entries.indexWhere((e) => e.path == path);
-      if (idx == -1) return false;
+      if (idx == -1) return null;
       final old = _entries[idx];
       final oldFile = File(old.path);
       if (!await oldFile.exists()) {
-        // Still update title in list if file missing
-        _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle);
+        // File missing; update title only
+        _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle, rating: old.rating, moods: old.moods);
         await _repo.save(_entries);
         notifyListeners();
-        return true;
+        return old.path;
       }
       final dir = oldFile.parent.path;
       final stamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(old.date);
@@ -243,12 +243,12 @@ class DiaryViewModel extends ChangeNotifier {
       final newName = 'diary_${stamp}_$safeTitle.mp4';
       final newPath = '$dir${Platform.pathSeparator}$newName';
       await oldFile.rename(newPath);
-      _entries[idx] = DiaryEntry(path: newPath, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle, rating: old.rating);
+      _entries[idx] = DiaryEntry(path: newPath, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle, rating: old.rating, moods: old.moods);
       await _repo.save(_entries);
       notifyListeners();
-      return true;
+      return newPath;
     } catch (_) {
-      return false;
+      return null;
     }
   }
 

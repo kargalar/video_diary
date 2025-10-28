@@ -1,99 +1,99 @@
-# Video Diary (Günlük Video)
+# Video Diary
 
-Kısa günlük videolar kaydet, puanla, ruh halini ekle, takvimde ilerlemeni takip et. Android, iOS, web (kısıtlı) ve masaüstü hedefleri için Flutter ile geliştirilmiştir.
+Record short daily videos, rate them, add moods, and track your progress in the calendar. Developed with Flutter for Android, iOS, web (limited), and desktop targets.
 
-## Özellikler
+## Features
 
-- Ön kamera ile hızlı video kaydı (Portrait/Yatay mod ayarlanabilir)
-- Kayıt sonrası başlık ekleme, 1–5 yıldız puanlama ve çoklu “ruh hali” seçimi
-- Kayıt listesi: küçük resim, süre, dosya boyutu; yeniden adlandırma ve silme (kaydırmalı menü)
-- Oynatıcı: oynat/duraklat, zaman çizelgesi ve süre gösterimi
-- Takvim görünümü: kayıt yapılan günleri, seri (streak), günlük ortalama puanı ve ruh halleri ısı haritasını gösterir
-- Günlük bildirim hatırlatıcısı: seçilen saatte bildirim planlama (zaman dilimi desteği)
-- Tema: Aydınlık/Karanlık
-- Kayıtların kaydedileceği klasörü seçme (varsayılan: uygulama belgeleri altında `video_diary`)
+- Quick video recording with front camera (Portrait/Landscape mode adjustable)
+- Post-recording: Add title, rate with 1-5 stars, and select multiple moods
+- Video list: Thumbnail, duration, file size; rename and delete (swipe menu)
+- Player: Play/pause, timeline and duration display
+- Calendar view: Shows recorded days, streak (streak), daily average rating, and mood heatmaps
+- Daily reminder notification: Schedule notification at selected time (timezone support)
+- Theme: Light/Dark
+- Choose folder to save videos (default: video_diary under app documents)
 
-## Hızlı Başlangıç
+## Quick Start
 
-1) Bağımlılıkları yükleyin
+1) Install dependencies
 
 ```powershell
 flutter pub get
 ```
 
-2) Uygulamayı çalıştırın (bağlı cihaz/emu üzerinde)
+2) Run the app (on connected device/emulator)
 
 ```powershell
 flutter run
 ```
 
-3) Yayın (release) derlemesi (opsiyonel)
+3) Release build (optional)
 
 ```powershell
 flutter run --release
 ```
 
-Not: VS Code içinde hazır görevler de bulunur: “Flutter pub get”, “Flutter analyze”, “Flutter test”.
+Note: VS Code has ready tasks: "Flutter pub get", "Flutter analyze", "Flutter test".
 
-## Ekranlar ve Akış
+## Screens and Flow
 
-- Günlük (ana sayfa):
-	- Üstte seri (streak) bandı: mevcut ve en iyi seri
-	- Liste: videoların küçük resimleri, süre/boyut ve başlık; öğeyi kaydırarak Yeniden Adlandır/Sil
-	- Alt eylemler: Kayıt, Takvim, Ayarlar
-- Kayıt: küçük bir FAB ile başlat/durdur, canlı süre sayacı; kayıt bitince başlık, puan ve ruh hali isteği
-- Oynatıcı: tam ekran video, üstte geri/başlık, altta kontroller
-- Takvim: ay görünümü, kayıt sayacı rozeti, bugünün çerçevesi, seri vurguları, puan yıldızları; güne dokununca o güne ait liste + puan düzenleme paneli
-- Ayarlar: kayıt klasörü seçimi, tema, yatay kayıt modu, günlük hatırlatma saati
+- Diary (home page):
+	- Top: Streak banner with current and best streak
+	- List: Video thumbnails, duration/size and title; swipe to Rename/Delete
+	- Bottom actions: Record, Calendar, Settings
+- Record: Small FAB to start/stop, live duration counter; after stopping, prompt for title, rating, and mood
+- Player: Full screen video, top back/title, bottom controls
+- Calendar: Month view, record count badges, today's frame, streak highlights, rating stars; tap day to list + rating edit panel
+- Settings: Folder selection, theme, landscape recording mode, daily reminder time
 
-## İzinler ve Platform Notları
+## Permissions and Platform Notes
 
 - Android:
-	- Kamera ve Mikrofon: video çekimi için gerekiyor
-	- Bildirimler ve (Android 13+) “exact alarm” izni: günlük hatırlatma için
-	- Depolama: kullanıcı klasörü seçimi için gerekebilir (SAF üzerinden); kayıtlar seçilen klasörde `video_diary/` altına yazılır
-	- Bazı cihazlarda “Arka planda tam zamanlı alarm” kısıtları nedeniyle bildirimler yaklaşık zamanlı planlanabilir
+	- Camera and Microphone: Required for video recording
+	- Notifications and (Android 13+) "exact alarm" permission: For daily reminders
+	- Storage: User folder selection via SAF; videos saved in selected folder under `video_diary/`
+	- Some devices may schedule approximate notifications due to "background full-time alarm" restrictions
 - iOS:
-	- Kamera/Mikrofon/Bildirim izin açıklamalarını Info.plist’e ekleyin (Privacy – Camera/Microphone Usage Description, Notifications)
+	- Add Camera/Microphone/Notification permission descriptions to Info.plist (Privacy – Camera/Microphone Usage Description, Notifications)
 
-Bu repo platform manifestlerini minimal tutar; ihtiyaçlarınıza göre güncelleyin.
+This repo keeps platform manifests minimal; update as needed.
 
-## Depolama ve Veri Modeli
+## Storage and Data Model
 
-- Video dosyaları: Kullanıcının seçtiği taban dizin altında `video_diary/diary_YYYY-MM-DD_HH-mm-ss[_Baslik].mp4`
-- Girdi listesi ve öznitelikler: SharedPreferences’ta JSON olarak saklanır
-- Günlük veriler (günlük ortalama puan, ruh halleri): Hive kutusu `day_data`
-- Küçük resimler: `video_thumbnail` ile oluşturulur ve yol bilgisi girişte tutulur
+- Video files: In user's selected base directory under `video_diary/diary_YYYY-MM-DD_HH-mm-ss[_Title].mp4`
+- Entry list and attributes: Stored as JSON in SharedPreferences
+- Daily data (daily average rating, moods): Hive box `day_data`
+- Thumbnails: Generated with `video_thumbnail` and path stored in entry
 
-## Proje Yapısı (özet)
+## Project Structure (summary)
 
-- `lib/main.dart`: uygulama girişi, bildirim/init ve dikey kilit
-- `lib/core/app.dart`: tema, rotalar, provider konfigürasyonu
-- `lib/features/diary/...`: günlük kayıt listesi, kayıt, oynatıcı, takvim; repository ve model
-- `lib/features/settings/...`: ayarlar ekranı, model ve repository
-- `lib/services/...`: bildirim, depolama (klasör seçimi/oluşturma), kamera/video servisleri
+- `lib/main.dart`: App entry, notification/init and portrait lock
+- `lib/core/app.dart`: Theme, routes, provider config
+- `lib/features/diary/...`: Diary entry list, record, player, calendar; repository and model
+- `lib/features/settings/...`: Settings screen, model and repository
+- `lib/services/...`: Notification, storage (folder selection/creation), camera/video services
 
-## Sık Karşılaşılan Sorunlar
+## Common Issues
 
-- Bildirimler gelmiyor:
-	- Uygulama içinden saat seçtikten sonra sistem izinlerini onaylayın
-	- Android 13+ için bildirim izni açık olmalı; bazı cihazlarda tam zamanlı alarm izni de gerekir
-- Video dosyası adlandırma başarısız:
-	- Başlık “güvenli” karakterlere dönüştürülür; dosya açıkken yeniden adlandırma başarısız olabilir
-- Dış klasöre yazılamıyor:
-	- Android sürümü/cihaz politikasına bağlı olarak sadece seçilen SAF klasörüne yazılabilir; olmazsa uygulama belgeleri klasörünü kullanın
-- Kamera yönü/sıkışma:
-	- Kayıt sayfasında seçtiğiniz “Yatay Kayıt” ayarı önizleme/kaydı kilitler; çıkınca uygulama tekrar dikeye döner
+- Notifications not coming:
+	- Grant system permissions after selecting time in app
+	- Android 13+ requires notification permission; some devices need full-time alarm permission too
+- Video file naming failure:
+	- Title converted to "safe" characters; renaming may fail if file is open
+- Cannot write to external folder:
+	- Depends on Android version/device policy; only write to selected SAF folder; otherwise use app documents folder
+- Camera orientation/squeezing:
+	- "Landscape Recording" setting in Record page locks preview/recording; app returns to portrait after exit
 
-## Geliştirme
+## Development
 
-Kod kalitesini kontrol etmek:
+Check code quality:
 
 ```powershell
 flutter analyze
 ```
 
-Testleri çalıştırmak:
+Run tests:
 
 ```powershell
 flutter test -r compact
