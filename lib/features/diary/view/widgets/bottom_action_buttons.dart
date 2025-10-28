@@ -20,6 +20,7 @@ class BottomActionButtons extends StatelessWidget {
         children: [
           // Streak indicator
           FloatingActionButton.extended(
+            heroTag: 'streakInfoFab',
             onPressed: null, // Non-interactive
             backgroundColor: Colors.white,
             icon: const Icon(Icons.local_fire_department, color: Colors.orange),
@@ -31,6 +32,7 @@ class BottomActionButtons extends StatelessWidget {
           const SizedBox(width: 8),
           // Start Recording button
           FloatingActionButton.extended(
+            heroTag: 'startRecordingFab',
             onPressed: () async {
               final filePath = await Navigator.of(context).pushNamed(RecordingPage.route);
               if (!context.mounted) return;
@@ -97,6 +99,7 @@ class BottomActionButtons extends StatelessWidget {
           const SizedBox(width: 8),
           // Settings button
           FloatingActionButton(
+            heroTag: 'settingsFab',
             onPressed: () => Navigator.of(context).pushNamed(SettingsPage.route),
             backgroundColor: Colors.white,
             tooltip: 'Settings',

@@ -18,6 +18,7 @@ class RecordingPage extends StatefulWidget {
 class _RecordingPageState extends State<RecordingPage> {
   CameraController? _controller;
   bool? _currentLandscape;
+  bool _isStopping = false;
 
   @override
   void initState() {
@@ -39,26 +40,39 @@ class _RecordingPageState extends State<RecordingPage> {
     await _lockCameraOrientation(landscape);
   }
 
+  Future<void> _stopRecordingAndExit({required DiaryViewModel vm, required bool returnFilePath}) async {
+    if (_isStopping) return;
+    setState(() => _isStopping = true);
+    try {
+      final filePath = await vm.stopRecording();
+      if (!mounted) return;
+      await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+      await vm.disposeCamera();
+      final nav = Navigator.of(context);
+      if (returnFilePath) {
+        nav.pop(filePath);
+      } else {
+        nav.pop();
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isStopping = false);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to stop recording.')));
+    }
+  }
+
   Future<void> _applyOrientation(bool landscape) async {
     if (landscape) {
-      await SystemChrome.setPreferredOrientations(const [
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
+      await SystemChrome.setPreferredOrientations(const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
     } else {
-      await SystemChrome.setPreferredOrientations(const [
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
+      await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
     }
   }
 
   Future<void> _lockCameraOrientation(bool landscape) async {
     if (_controller == null || !_controller!.value.isInitialized) return;
     if (landscape) {
-      await _controller!.lockCaptureOrientation(
-        DeviceOrientation.landscapeLeft,
-      );
+      await _controller!.lockCaptureOrientation(DeviceOrientation.landscapeLeft);
     } else {
       await _controller!.lockCaptureOrientation(DeviceOrientation.portraitUp);
     }
@@ -69,10 +83,7 @@ class _RecordingPageState extends State<RecordingPage> {
     // Release camera and restore all orientations when leaving the page
     context.read<DiaryViewModel>().disposeCamera();
     // Return app to portrait when leaving recording
-    SystemChrome.setPreferredOrientations(const [
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
     super.dispose();
   }
 
@@ -80,9 +91,7 @@ class _RecordingPageState extends State<RecordingPage> {
   Widget build(BuildContext context) {
     final vm = context.watch<DiaryViewModel>();
     // React to settings changes live
-    final landscape = context.select<SettingsViewModel, bool>(
-      (s) => s.state.landscape,
-    );
+    final landscape = context.select<SettingsViewModel, bool>((s) => s.state.landscape);
     if (_currentLandscape != landscape) {
       _currentLandscape = landscape;
       // fire-and-forget updates
@@ -93,13 +102,11 @@ class _RecordingPageState extends State<RecordingPage> {
     return PopScope(
       canPop: !vm.isRecording,
       onPopInvokedWithResult: (didPop, result) async {
+        if (_isStopping) return;
         if (didPop) {
           // If already popped (not recording), clean up
           final vm = context.read<DiaryViewModel>();
-          await SystemChrome.setPreferredOrientations(const [
-            DeviceOrientation.portraitUp,
-            DeviceOrientation.portraitDown,
-          ]);
+          await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
           await vm.disposeCamera();
         } else if (vm.isRecording) {
           // If recording, stop recording first
@@ -109,195 +116,153 @@ class _RecordingPageState extends State<RecordingPage> {
               title: const Text('Stop recording?'),
               content: const Text('The video will be saved if you go back.'),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Stop & Save'),
-                ),
+                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Stop & Save')),
               ],
             ),
           );
 
-          if (shouldStop == true && context.mounted) {
-            final nav = Navigator.of(context);
-            await vm.stopRecording();
-            await SystemChrome.setPreferredOrientations(const [
-              DeviceOrientation.portraitUp,
-              DeviceOrientation.portraitDown,
-            ]);
-            await vm.disposeCamera();
-            nav.pop(); // Don't return filePath, so bottomsheet won't open
+          if (shouldStop == true && mounted) {
+            await _stopRecordingAndExit(vm: vm, returnFilePath: false);
           }
         }
       },
-      child: Scaffold(
-        // Prevent keyboard from pushing the whole UI up; let it overlay instead
-        resizeToAvoidBottomInset: false,
-        appBar: null,
-        backgroundColor: Colors.black,
-        floatingActionButton: Builder(
-          builder: (context) {
-            final isRec = vm.isRecording;
-            return FloatingActionButton.small(
-              backgroundColor: isRec ? Colors.red : Colors.green,
-              tooltip: isRec ? 'Stop' : 'Start Recording',
-              child: Icon(isRec ? Icons.stop : Icons.fiber_manual_record),
-              onPressed: () async {
-                final nav = Navigator.of(context);
-                if (!vm.isRecording) {
-                  await vm.startRecording();
-                  if (!mounted) return;
-                  setState(() {});
-                } else {
-                  final filePath = await vm.stopRecording();
-                  if (!context.mounted) return;
-
-                  // Force portrait immediately after recording ends
-                  await SystemChrome.setPreferredOrientations(const [
-                    DeviceOrientation.portraitUp,
-                    DeviceOrientation.portraitDown,
-                  ]);
-
-                  // Dispose camera first, then pop with the file path
-                  await vm.disposeCamera();
-                  nav.pop(
-                    filePath,
-                  ); // Return the file path to the previous screen
-                }
-              },
-            );
-          },
-        ),
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: _controller == null
-                  ? const Center(child: CircularProgressIndicator())
-                  : LayoutBuilder(
-                      builder: (context, constraints) {
-                        // Non-distorted preview using previewSize + FittedBox
-                        final size = _controller!.value.previewSize;
-                        if (size == null) {
-                          return Center(
-                            child: AspectRatio(
-                              aspectRatio: _controller!.value.aspectRatio,
-                              child: CameraPreview(_controller!),
-                            ),
-                          );
-                        }
-                        double previewW = size.width;
-                        double previewH = size.height;
-                        // If portrait page, ensure width < height for proper contain fit
-                        if (!landscape && previewW > previewH) {
-                          final tmp = previewW;
-                          previewW = previewH;
-                          previewH = tmp;
-                        }
-                        return FittedBox(
-                          fit: BoxFit.contain,
-                          child: SizedBox(
-                            width: previewW,
-                            height: previewH,
-                            child: CameraPreview(_controller!),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-            // Top overlay: back button (now above preview)
-            Positioned(
-              left: 8,
-              right: 8,
-              top: 8,
-              child: SafeArea(
-                bottom: false,
-                child: Row(
-                  children: [
-                    Material(
-                      color: Colors.black45,
-                      shape: const CircleBorder(),
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () async {
-                          final vm = context.read<DiaryViewModel>();
-                          final nav = Navigator.of(context);
-
-                          if (vm.isRecording) {
-                            // If recording, show confirmation dialog
-                            final shouldStop = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Stop recording?'),
-                                content: const Text(
-                                  'The video will be saved if you go back.',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, true),
-                                    child: const Text('Stop & Save'),
-                                  ),
-                                ],
-                              ),
-                            );
-
-                            if (shouldStop == true && context.mounted) {
-                              await vm.stopRecording();
-                              await SystemChrome.setPreferredOrientations(
-                                const [
-                                  DeviceOrientation.portraitUp,
-                                  DeviceOrientation.portraitDown,
-                                ],
-                              );
-                              await vm.disposeCamera();
-                              nav.pop(); // Don't return filePath, so bottomsheet won't open
-                            }
+      child: Stack(
+        children: [
+          Scaffold(
+            // Prevent keyboard from pushing the whole UI up; let it overlay instead
+            resizeToAvoidBottomInset: false,
+            appBar: null,
+            backgroundColor: Colors.black,
+            floatingActionButton: Builder(
+              builder: (context) {
+                final isRec = vm.isRecording;
+                return FloatingActionButton.small(
+                  backgroundColor: isRec ? Colors.red : Colors.green,
+                  tooltip: isRec ? 'Stop' : 'Start Recording',
+                  onPressed: _isStopping
+                      ? null
+                      : () async {
+                          if (!vm.isRecording) {
+                            await vm.startRecording();
+                            if (!mounted) return;
+                            setState(() {});
                           } else {
-                            // Not recording, just go back
-                            await vm.disposeCamera();
-                            await SystemChrome.setPreferredOrientations(const [
-                              DeviceOrientation.portraitUp,
-                              DeviceOrientation.portraitDown,
-                            ]);
-                            nav.pop();
+                            await _stopRecordingAndExit(vm: vm, returnFilePath: true);
                           }
                         },
-                      ),
+                  child: Icon(isRec ? Icons.stop : Icons.fiber_manual_record),
+                );
+              },
+            ),
+            body: Stack(
+              children: [
+                Positioned.fill(
+                  child: _controller == null
+                      ? const Center(child: CircularProgressIndicator())
+                      : LayoutBuilder(
+                          builder: (context, constraints) {
+                            // Non-distorted preview using previewSize + FittedBox
+                            final size = _controller!.value.previewSize;
+                            if (size == null) {
+                              return Center(
+                                child: AspectRatio(aspectRatio: _controller!.value.aspectRatio, child: CameraPreview(_controller!)),
+                              );
+                            }
+                            double previewW = size.width;
+                            double previewH = size.height;
+                            // If portrait page, ensure width < height for proper contain fit
+                            if (!landscape && previewW > previewH) {
+                              final tmp = previewW;
+                              previewW = previewH;
+                              previewH = tmp;
+                            }
+                            return FittedBox(
+                              fit: BoxFit.contain,
+                              child: SizedBox(width: previewW, height: previewH, child: CameraPreview(_controller!)),
+                            );
+                          },
+                        ),
+                ),
+                // Top overlay: back button (now above preview)
+                Positioned(
+                  left: 8,
+                  right: 8,
+                  top: 8,
+                  child: SafeArea(
+                    bottom: false,
+                    child: Row(
+                      children: [
+                        Material(
+                          color: Colors.black45,
+                          shape: const CircleBorder(),
+                          child: IconButton(
+                            icon: const Icon(Icons.arrow_back, color: Colors.white),
+                            onPressed: () async {
+                              final vm = context.read<DiaryViewModel>();
+                              if (vm.isRecording) {
+                                // If recording, show confirmation dialog
+                                final shouldStop = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Stop recording?'),
+                                    content: const Text('The video will be saved if you go back.'),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Stop & Save')),
+                                    ],
+                                  ),
+                                );
+
+                                if (shouldStop == true && mounted) {
+                                  await _stopRecordingAndExit(vm: vm, returnFilePath: false);
+                                }
+                              } else {
+                                // Not recording, just go back
+                                await vm.disposeCamera();
+                                await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+                                if (!mounted) return;
+                                Navigator.of(context).pop();
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Recording',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: Colors.white70, fontSize: 16),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Recording',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: Colors.white70, fontSize: 16),
-                      ),
-                    ),
-                  ],
+                  ),
+                ),
+                // Elapsed timer overlay when recording
+                if (vm.isRecording)
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: SafeArea(bottom: false, child: _RecordingTimer(startedAt: vm.recordingStartedAt)),
+                  ),
+                // Removed the large centered start/stop button; using small FAB at bottom-right instead
+              ],
+            ),
+          ),
+          if (_isStopping)
+            Positioned.fill(
+              child: AbsorbPointer(
+                absorbing: true,
+                child: Container(
+                  color: Colors.black54,
+                  // Block all input and show progress while the recording stops.
+                  child: const Center(child: CircularProgressIndicator()),
                 ),
               ),
             ),
-            // Elapsed timer overlay when recording
-            if (vm.isRecording)
-              Positioned(
-                top: 16,
-                right: 16,
-                child: SafeArea(
-                  bottom: false,
-                  child: _RecordingTimer(startedAt: vm.recordingStartedAt),
-                ),
-              ),
-            // Removed the large centered start/stop button; using small FAB at bottom-right instead
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -344,18 +309,11 @@ class _RecordingTimerState extends State<_RecordingTimer> {
     final text = _fmt(_elapsed);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black54,
-        borderRadius: BorderRadius.circular(16),
-      ),
+      decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(16)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.fiber_manual_record,
-            color: Colors.redAccent,
-            size: 16,
-          ),
+          const Icon(Icons.fiber_manual_record, color: Colors.redAccent, size: 16),
           const SizedBox(width: 6),
           Text(text, style: const TextStyle(color: Colors.white)),
         ],
