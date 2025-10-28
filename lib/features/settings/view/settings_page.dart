@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../viewmodel/settings_view_model.dart';
 import '../../diary/viewmodel/diary_view_model.dart';
+import 'privacy_policy_webview_page.dart';
 
 class SettingsPage extends StatelessWidget {
   static const route = '/settings';
@@ -85,6 +86,17 @@ class SettingsPage extends StatelessWidget {
                 label: const Text('Send Test Notification (Debug)'),
               ),
             ),
+          const Divider(height: 32),
+          // Privacy Policy Section
+          ListTile(
+            leading: const Icon(Icons.privacy_tip),
+            title: const Text('Privacy Policy'),
+            subtitle: const Text('View our privacy policy'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const PrivacyPolicyWebViewPage()));
+            },
+          ),
           const Divider(height: 32),
           // Clear All Videos Section
           ListTile(

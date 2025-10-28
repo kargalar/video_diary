@@ -12,15 +12,7 @@ class VideoEditBottomSheet extends StatefulWidget {
   final DateTime? currentDate;
   final bool isNewVideo;
 
-  const VideoEditBottomSheet({
-    super.key,
-    required this.currentTitle,
-    this.currentRating,
-    required this.currentMoods,
-    this.showDeleteButton = false,
-    this.currentDate,
-    this.isNewVideo = false,
-  });
+  const VideoEditBottomSheet({super.key, required this.currentTitle, this.currentRating, required this.currentMoods, this.showDeleteButton = false, this.currentDate, this.isNewVideo = false});
 
   @override
   State<VideoEditBottomSheet> createState() => _VideoEditBottomSheetState();
@@ -28,6 +20,7 @@ class VideoEditBottomSheet extends StatefulWidget {
 
 class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
   late TextEditingController _titleController;
+  late FocusNode _titleFocusNode;
   late int _rating;
   late Set<Mood> _selectedMoods;
   late DateTime _selectedDate;
@@ -36,24 +29,26 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.currentTitle);
+    _titleFocusNode = FocusNode();
     _rating = widget.currentRating ?? 0;
     _selectedMoods = widget.currentMoods.toSet();
     _selectedDate = widget.currentDate ?? DateTime.now();
+
+    // Auto focus on title field after build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _titleFocusNode.requestFocus();
+    });
   }
 
   @override
   void dispose() {
     _titleController.dispose();
+    _titleFocusNode.dispose();
     super.dispose();
   }
 
   Map<String, dynamic> _getResult() {
-    return {
-      'title': _titleController.text.trim(),
-      'rating': _rating == 0 ? null : _rating,
-      'moods': _selectedMoods.toList(),
-      if (kDebugMode) 'date': _selectedDate,
-    };
+    return {'title': _titleController.text.trim(), 'rating': _rating == 0 ? null : _rating, 'moods': _selectedMoods.toList(), if (kDebugMode) 'date': _selectedDate};
   }
 
   @override
@@ -69,14 +64,9 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
               context: context,
               builder: (context) => AlertDialog(
                 title: const Text('Discard video?'),
-                content: const Text(
-                  'If you close without saving, the video will be deleted.',
-                ),
+                content: const Text('If you close without saving, the video will be deleted.'),
                 actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Cancel'),
-                  ),
+                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
                   TextButton(
                     onPressed: () => Navigator.pop(context, true),
                     style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -107,13 +97,7 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      widget.isNewVideo ? 'Save Video' : 'Edit Diary',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
+                    child: Text(widget.isNewVideo ? 'Save Video' : 'Edit Diary', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w500, letterSpacing: 0.5)),
                   ),
                   if (widget.isNewVideo)
                     IconButton(
@@ -123,19 +107,12 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                           context: context,
                           builder: (context) => AlertDialog(
                             title: const Text('Discard video?'),
-                            content: const Text(
-                              'If you close without saving, the video will be deleted.',
-                            ),
+                            content: const Text('If you close without saving, the video will be deleted.'),
                             actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Cancel'),
-                              ),
+                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
                               TextButton(
                                 onPressed: () => Navigator.pop(context, true),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.red,
-                                ),
+                                style: TextButton.styleFrom(foregroundColor: Colors.red),
                                 child: const Text('Discard'),
                               ),
                             ],
@@ -160,6 +137,7 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                     // Title
                     TextField(
                       controller: _titleController,
+                      focusNode: _titleFocusNode,
                       decoration: InputDecoration(
                         hintText: 'Video title',
                         border: OutlineInputBorder(
@@ -172,14 +150,9 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF2C2C2C),
-                          ),
+                          borderSide: const BorderSide(color: Color(0xFF2C2C2C)),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -187,42 +160,22 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                     if (kDebugMode) ...[
                       GestureDetector(
                         onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: _selectedDate,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime.now(),
-                          );
+                          final picked = await showDatePicker(context: context, initialDate: _selectedDate, firstDate: DateTime(2020), lastDate: DateTime.now());
                           if (picked != null) {
                             setState(() => _selectedDate = picked);
                           }
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                           decoration: BoxDecoration(
                             border: Border.all(color: Colors.grey[300]!),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
                             children: [
-                              Icon(
-                                Icons.calendar_today,
-                                size: 20,
-                                color: Colors.grey[600],
-                              ),
+                              Icon(Icons.calendar_today, size: 20, color: Colors.grey[600]),
                               const SizedBox(width: 12),
-                              Text(
-                                DateFormat(
-                                  'MMM dd, yyyy',
-                                ).format(_selectedDate),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[800],
-                                ),
-                              ),
+                              Text(DateFormat('MMM dd, yyyy').format(_selectedDate), style: TextStyle(fontSize: 16, color: Colors.grey[800])),
                             ],
                           ),
                         ),
@@ -239,18 +192,8 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                           return GestureDetector(
                             onTap: () => setState(() => _rating = starValue),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
-                              child: Icon(
-                                isSelected
-                                    ? Icons.star_rounded
-                                    : Icons.star_outline_rounded,
-                                size: 32,
-                                color: isSelected
-                                    ? Colors.amber[600]
-                                    : Colors.grey[300],
-                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: Icon(isSelected ? Icons.star_rounded : Icons.star_outline_rounded, size: 32, color: isSelected ? Colors.amber[600] : Colors.grey[300]),
                             ),
                           );
                         }),
@@ -258,11 +201,7 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                           const SizedBox(width: 8),
                           GestureDetector(
                             onTap: () => setState(() => _rating = 0),
-                            child: Icon(
-                              Icons.close,
-                              size: 20,
-                              color: Colors.grey[500],
-                            ),
+                            child: Icon(Icons.close, size: 20, color: Colors.grey[500]),
                           ),
                         ],
                       ],
@@ -272,13 +211,7 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            'Mood',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
+                          child: Text('Mood', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500, letterSpacing: 0.3)),
                         ),
                       ],
                     ),
@@ -299,35 +232,16 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                             });
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? const Color.fromARGB(255, 0, 191, 216)
-                                  : Colors.grey[100],
-                              borderRadius: BorderRadius.circular(20),
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(color: isSelected ? const Color.fromARGB(255, 0, 191, 216) : Colors.grey[100], borderRadius: BorderRadius.circular(20)),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  mood.emoji,
-                                  style: const TextStyle(fontSize: 18),
-                                ),
+                                Text(mood.emoji, style: const TextStyle(fontSize: 18)),
                                 const SizedBox(width: 6),
                                 Text(
                                   mood.label,
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? const Color(0xFF2C2C2C)
-                                        : Colors.grey[700],
-                                    fontWeight: isSelected
-                                        ? FontWeight.w500
-                                        : FontWeight.w400,
-                                    fontSize: 14,
-                                  ),
+                                  style: TextStyle(color: isSelected ? const Color(0xFF2C2C2C) : Colors.grey[700], fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400, fontSize: 14),
                                 ),
                               ],
                             ),
@@ -354,19 +268,10 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2C2C2C),
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
-                          child: const Text(
-                            'Save',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
+                          child: const Text('Save', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
                         ),
                       )
                     : widget.showDeleteButton
@@ -378,19 +283,12 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                           },
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: Colors.red),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
                           child: const Text(
                             'Delete',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.5,
-                              color: Colors.red,
-                            ),
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: Colors.red),
                           ),
                         ),
                       )
