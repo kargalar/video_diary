@@ -1,7 +1,3 @@
-takvimi geliştir. puan ve ruh halleri daha düzgün belirtilsin
-
-home page için her satıda bir gün yerine her satırda 2- 3 gün tasrımını dene
-
 bir de not kısmı ekle onu da göster belki.
 
 ana sayfadaki streak ile ilgili şeyler ayarlardan akaptılabilsin.
@@ -15,3 +11,9 @@ video kayderken ve izlerken ekran dönmeden yapabilri miyiz.
 video kaydettikten sonra bir bozukluk oluyor.
 
 takvimi sağa sola kaydırarak da gidlisn.
+
+paket adı
+uygulama adı
+logo
+
+start recorfing altta tek kalmalı. streak ve ayarları taşı.

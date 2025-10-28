@@ -26,7 +26,7 @@ class StorageService {
   }
 
   Future<Directory> ensureDiaryFolder(String baseDir) async {
-    final d = Directory('$baseDir${Platform.pathSeparator}video_diary');
+    final d = Directory('$baseDir${Platform.pathSeparator}Video Diary');
     if (!await d.exists()) {
       await d.create(recursive: true);
     }
