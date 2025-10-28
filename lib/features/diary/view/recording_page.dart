@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../viewmodel/diary_view_model.dart';
-import '../../settings/viewmodel/settings_view_model.dart';
 
 class RecordingPage extends StatefulWidget {
   static const route = '/record';
@@ -17,7 +16,6 @@ class RecordingPage extends StatefulWidget {
 
 class _RecordingPageState extends State<RecordingPage> {
   CameraController? _controller;
-  bool? _currentLandscape;
   bool _isStopping = false;
 
   @override
@@ -27,11 +25,9 @@ class _RecordingPageState extends State<RecordingPage> {
   }
 
   Future<void> _init() async {
-    // Apply preferred device orientation according to settings
-    final settingsVm = context.read<SettingsViewModel>();
+    // Always use landscape orientation for recording
     final vm = context.read<DiaryViewModel>();
-    final landscape = settingsVm.state.landscape;
-    _currentLandscape = landscape;
+    const landscape = true;
     await _applyOrientation(landscape);
     await vm.initCamera();
     if (!mounted) return;
@@ -91,14 +87,7 @@ class _RecordingPageState extends State<RecordingPage> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<DiaryViewModel>();
-    // React to settings changes live
-    final landscape = context.select<SettingsViewModel, bool>((s) => s.state.landscape);
-    if (_currentLandscape != landscape) {
-      _currentLandscape = landscape;
-      // fire-and-forget updates
-      _applyOrientation(landscape);
-      _lockCameraOrientation(landscape);
-    }
+    // Always use landscape mode - no dynamic switching
 
     return PopScope(
       canPop: !vm.isRecording,
@@ -172,12 +161,7 @@ class _RecordingPageState extends State<RecordingPage> {
                             }
                             double previewW = size.width;
                             double previewH = size.height;
-                            // If portrait page, ensure width < height for proper contain fit
-                            if (!landscape && previewW > previewH) {
-                              final tmp = previewW;
-                              previewW = previewH;
-                              previewH = tmp;
-                            }
+                            // Always landscape mode, no rotation needed
                             return FittedBox(
                               fit: BoxFit.contain,
                               child: SizedBox(width: previewW, height: previewH, child: CameraPreview(_controller!)),

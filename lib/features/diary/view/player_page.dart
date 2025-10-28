@@ -46,8 +46,8 @@ class _PlayerPageState extends State<PlayerPage> {
       final c = VideoPlayerController.file(file);
       await c.initialize();
       await c.setLooping(false);
-      // If the video is landscape, rotate the UI to landscape for better viewing
-      if ((Platform.isAndroid || Platform.isIOS) && c.value.size.width > c.value.size.height) {
+      // Always rotate to landscape for better viewing
+      if (Platform.isAndroid || Platform.isIOS) {
         await SystemChrome.setPreferredOrientations(const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
         _forcedLandscape = true;
       }

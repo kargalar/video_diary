@@ -13,7 +13,7 @@ class _PrivacyPolicyWebViewPageState extends State<PrivacyPolicyWebViewPage> {
   late final WebViewController controller;
   bool isLoading = true;
 
-  final String privacyPolicyUrl = ' https://kargalar.github.io/videodiary_privacy/';
+  final String privacyPolicyUrl = 'https://kargalar.github.io/videodiary_privacy/';
 
   @override
   void initState() {

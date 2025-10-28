@@ -29,7 +29,6 @@ class SettingsPage extends StatelessWidget {
             trailing: ElevatedButton(onPressed: vm.pickDirectory, child: const Text('Select')),
           ),
           const SizedBox(height: 12),
-          SwitchListTile(secondary: const Icon(Icons.screen_rotation), title: const Text('Landscape Recording'), value: state.landscape, onChanged: (v) => vm.setLandscape(v)),
           const Divider(height: 32),
           // Reminder Section
           ListTile(
