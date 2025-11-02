@@ -128,8 +128,7 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                           Navigator.of(context).pop({'discard': true});
                         }
                       },
-                    )
-                
+                    ),
                 ],
               ),
             ),
@@ -151,7 +150,7 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                       },
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
-                        hintText: 'Başlık',
+                        hintText: 'Title',
                         hintStyle: TextStyle(fontSize: 18, color: Colors.grey[400]),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
@@ -169,7 +168,7 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                       minLines: 3,
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
                       decoration: InputDecoration(
-                        hintText: 'Açıklama (isteğe bağlı)',
+                        hintText: 'Description (optional)',
                         hintStyle: TextStyle(fontSize: 14, color: Colors.grey[400]),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
