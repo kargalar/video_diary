@@ -10,6 +10,6 @@ video kayderken ve izlerken ekran dönmeden yapabilri miyiz.
 
 video kaydettikten sonra bir bozukluk oluyor.
 
-takvimi sağa sola kaydırarak da gidlisn.
+takvimi sağa sola kaydırarak da gidilsin.
 
-start recorfing altta tek kalmalı. streak ve ayarları taşı.a
+start recording altta tek kalmalı. streak ve ayarları taşı.

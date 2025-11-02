@@ -99,21 +99,30 @@ class _RecordingPageState extends State<RecordingPage> {
           await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
           await vm.disposeCamera();
         } else if (vm.isRecording) {
-          // If recording, stop recording first
-          final shouldStop = await showDialog<bool>(
+          // If recording, show confirmation dialog
+          final shouldDelete = await showDialog<bool>(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('Stop recording?'),
-              content: const Text('The video will be saved if you go back.'),
+              title: const Text('Delete video?'),
+              content: const Text('The recorded video will be deleted.'),
               actions: [
                 TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Stop & Save')),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  child: const Text('Delete'),
+                ),
               ],
             ),
           );
 
-          if (shouldStop == true && mounted) {
-            await _stopRecordingAndExit(vm: vm, returnFilePath: false);
+          if (shouldDelete == true && mounted) {
+            // Discard the recording without saving
+            await vm.disposeCamera();
+            await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+            if (!mounted) return;
+            // ignore: use_build_context_synchronously
+            Navigator.of(context).pop();
           }
         }
       },
@@ -127,21 +136,35 @@ class _RecordingPageState extends State<RecordingPage> {
             floatingActionButton: Builder(
               builder: (context) {
                 final isRec = vm.isRecording;
-                return FloatingActionButton.small(
-                  backgroundColor: isRec ? Colors.red : Colors.green,
-                  tooltip: isRec ? 'Stop' : 'Start Recording',
-                  onPressed: _isStopping
-                      ? null
-                      : () async {
-                          if (!vm.isRecording) {
-                            await vm.startRecording();
-                            if (!mounted) return;
-                            setState(() {});
-                          } else {
-                            await _stopRecordingAndExit(vm: vm, returnFilePath: true);
-                          }
-                        },
-                  child: Icon(isRec ? Icons.stop : Icons.fiber_manual_record),
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: FloatingActionButton(
+                    backgroundColor: isRec ? Colors.red : Colors.black87,
+                    tooltip: isRec ? 'Stop' : 'Start Recording',
+                    onPressed: _isStopping
+                        ? null
+                        : () async {
+                            if (!vm.isRecording) {
+                              try {
+                                await vm.startRecording();
+                                if (!mounted) return;
+                                setState(() {});
+                              } catch (e) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(e.toString().replaceFirst('Exception: ', ''), style: const TextStyle(color: Colors.white)),
+                                    backgroundColor: Colors.red,
+                                    duration: const Duration(seconds: 4),
+                                  ),
+                                );
+                              }
+                            } else {
+                              await _stopRecordingAndExit(vm: vm, returnFilePath: true);
+                            }
+                          },
+                    child: Icon(isRec ? Icons.stop : Icons.fiber_manual_record, size: 28),
+                  ),
                 );
               },
             ),
@@ -187,20 +210,29 @@ class _RecordingPageState extends State<RecordingPage> {
                               final vm = context.read<DiaryViewModel>();
                               if (vm.isRecording) {
                                 // If recording, show confirmation dialog
-                                final shouldStop = await showDialog<bool>(
+                                final shouldDelete = await showDialog<bool>(
                                   context: context,
                                   builder: (context) => AlertDialog(
-                                    title: const Text('Stop recording?'),
-                                    content: const Text('The video will be saved if you go back.'),
+                                    title: const Text('Delete video?'),
+                                    content: const Text('The recorded video will be deleted.'),
                                     actions: [
                                       TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Stop & Save')),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, true),
+                                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                        child: const Text('Delete'),
+                                      ),
                                     ],
                                   ),
                                 );
 
-                                if (shouldStop == true && mounted) {
-                                  await _stopRecordingAndExit(vm: vm, returnFilePath: false);
+                                if (shouldDelete == true && mounted) {
+                                  // Discard the recording without saving
+                                  await vm.disposeCamera();
+                                  await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+                                  if (!mounted) return;
+                                  // ignore: use_build_context_synchronously
+                                  Navigator.of(context).pop();
                                 }
                               } else {
                                 // Not recording, just go back

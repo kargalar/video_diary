@@ -266,8 +266,8 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                             Navigator.pop(context, _getResult());
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2C2C2C),
-                            foregroundColor: Colors.white,
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black87,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
@@ -275,20 +275,20 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                         ),
                       )
                     : widget.showDeleteButton
-                    ? SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.pop(context, {'delete': true});
-                          },
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.red),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: const Text(
-                            'Delete',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: Colors.red),
+                    ? Align(
+                        alignment: Alignment.centerRight,
+                        child: SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 22),
+                            onPressed: () {
+                              Navigator.pop(context, {'delete': true});
+                            },
+                            style: IconButton.styleFrom(
+                              side: const BorderSide(color: Colors.red),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
                           ),
                         ),
                       )

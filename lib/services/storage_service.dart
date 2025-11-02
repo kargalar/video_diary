@@ -1,12 +1,11 @@
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class StorageService {
-  // Let user pick a folder; if not supported, use app document directory
-  Future<String> pickDirectory({String? initialDirectory}) async {
+  // Let user pick a folder; returns null if user cancels the dialog
+  Future<String?> pickDirectory({String? initialDirectory}) async {
     // Android 11+ may require MANAGE_EXTERNAL_STORAGE for arbitrary directories.
     // We attempt SAF via file_selector. If not available, return app docs.
     try {
@@ -21,8 +20,8 @@ class StorageService {
 
     final dir = await getDirectoryPath(initialDirectory: initialDirectory);
     if (dir != null) return dir;
-    final fallback = await getApplicationDocumentsDirectory();
-    return fallback.path;
+    // User cancelled the dialog or directory picker not available
+    return null;
   }
 
   Future<Directory> ensureDiaryFolder(String baseDir) async {

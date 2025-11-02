@@ -26,6 +26,10 @@ class VideoGridItem extends StatelessWidget {
 
     return Slidable(
       key: ValueKey(path),
+      startActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        children: [SlidableAction(onPressed: (context) => _openEditBottomSheet(context), backgroundColor: Colors.blue, foregroundColor: Colors.white, icon: Icons.edit, label: 'Edit', borderRadius: BorderRadius.circular(16))],
+      ),
       endActionPane: ActionPane(
         motion: const ScrollMotion(),
         children: [SlidableAction(onPressed: (context) => onDelete(), backgroundColor: Colors.red, foregroundColor: Colors.white, icon: Icons.delete, label: 'Delete', borderRadius: BorderRadius.circular(16))],

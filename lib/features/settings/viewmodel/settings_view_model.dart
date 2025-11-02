@@ -21,8 +21,10 @@ class SettingsViewModel extends ChangeNotifier {
 
   Future<void> pickDirectory() async {
     final selected = await _storage.pickDirectory(initialDirectory: state.storageDirectory);
-    _state = _state.copyWith(storageDirectory: selected);
-    await _repo.save(_state);
+    if (selected != null) {
+      _state = _state.copyWith(storageDirectory: selected);
+      await _repo.save(_state);
+    }
     notifyListeners();
   }
 

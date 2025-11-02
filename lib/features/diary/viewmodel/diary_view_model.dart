@@ -67,12 +67,25 @@ class DiaryViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Request camera and microphone permissions and return true if both are granted
+  Future<bool> requestAndCheckPermissions() async {
+    final cameraStatus = await Permission.camera.request();
+    final micStatus = await Permission.microphone.request();
+    return cameraStatus.isGranted && micStatus.isGranted;
+  }
+
   Future<void> startRecording() async {
     await Permission.camera.request();
     await Permission.microphone.request();
 
     var settings = await _settingsRepo.load();
     final base = settings.storageDirectory ?? (await _storage.pickDirectory());
+
+    // If user cancelled location selection or it returned null, throw error
+    if (base == null) {
+      throw Exception('Storage location not selected. Location selection is required to record videos.');
+    }
+
     if (settings.storageDirectory == null) {
       // persist chosen dir so it appears immediately in settings
       settings = settings.copyWith(storageDirectory: base);
@@ -95,6 +108,12 @@ class DiaryViewModel extends ChangeNotifier {
     if (!_isRecording) return null;
     var settings = await _settingsRepo.load();
     final base = settings.storageDirectory ?? (await _storage.pickDirectory());
+
+    // If user cancelled location selection or it returned null, throw error
+    if (base == null) {
+      throw Exception('Storage location not selected. Location selection is required to save videos.');
+    }
+
     if (settings.storageDirectory == null) {
       settings = settings.copyWith(storageDirectory: base);
       await _settingsRepo.save(settings);

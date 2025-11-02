@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../../viewmodel/diary_view_model.dart';
@@ -34,6 +35,21 @@ class BottomActionButtons extends StatelessWidget {
           FloatingActionButton.extended(
             heroTag: 'startRecordingFab',
             onPressed: () async {
+              // Request permissions first
+              final hasPermissions = await vm.requestAndCheckPermissions();
+              if (!hasPermissions) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Camera and microphone permissions are required to record videos.', style: TextStyle(color: Colors.white)),
+                    backgroundColor: Colors.orange,
+                    duration: const Duration(seconds: 4),
+                    action: SnackBarAction(label: 'Settings', onPressed: () => openAppSettings(), textColor: Colors.white),
+                  ),
+                );
+                return;
+              }
+
               final filePath = await Navigator.of(context).pushNamed(RecordingPage.route);
               if (!context.mounted) return;
 
