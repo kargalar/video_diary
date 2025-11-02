@@ -64,7 +64,8 @@ class BottomActionButtons extends StatelessWidget {
                   context: context,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
-                  isDismissible: false,
+                  isDismissible: true,
+
                   enableDrag: false,
                   builder: (context) => PopScope(
                     canPop: false,

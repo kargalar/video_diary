@@ -13,3 +13,6 @@ video kaydettikten sonra bir bozukluk oluyor.
 takvimi sağa sola kaydırarak da gidilsin.
 
 start recording altta tek kalmalı. streak ve ayarları taşı.
+
+Download all data
+İmport all data
