@@ -6,6 +6,7 @@ import '../../viewmodel/diary_view_model.dart';
 import '../../../settings/view/settings_page.dart';
 import '../recording_page.dart';
 import 'video_edit_bottom_sheet.dart';
+import '../../../../services/video_review_service.dart';
 
 class BottomActionButtons extends StatelessWidget {
   const BottomActionButtons({super.key});
@@ -107,6 +108,13 @@ class BottomActionButtons extends StatelessWidget {
 
                   if (moods != null && moods.isNotEmpty) {
                     await vm.setMoodsForEntry(entryPath, moods.cast());
+                  }
+
+                  // Video başarıyla kaydedildi, review servisi çağrılır
+                  // ignore: use_build_context_synchronously
+                  if (context.mounted) {
+                    final reviewService = VideoReviewService();
+                    await reviewService.incrementVideoCountAndRequestReview();
                   }
                 }
               }
