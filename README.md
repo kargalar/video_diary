@@ -2,6 +2,10 @@
 
 A Flutter app to record short daily videos, rate them, add moods, and track your progress in a calendar.
 
+
+## Download
+[![Google Play Store](https://img.shields.io/badge/Google%20Play-Download-brightgreen?logo=google-play)](https://play.google.com/store/apps/details?id=app.videodiary)
+
 ## Features
 
 - Record videos with front camera
@@ -26,6 +30,10 @@ flutter run
 - `lib/features/diary/` – Video diary features (record, player, calendar)
 - `lib/features/settings/` – Settings screen
 - `lib/services/` – Camera, storage, notifications
+
+## Download
+
+[Google Play](https://play.google.com/store/apps/details?id=com.videodiary)
 
 ## Dependencies
 
