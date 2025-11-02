@@ -85,6 +85,7 @@ class BottomActionButtons extends StatelessWidget {
 
                   // Save the metadata
                   final title = result['title'] as String?;
+                  final description = result['description'] as String?;
                   final rating = result['rating'] as int?;
                   final moods = result['moods'] as List<dynamic>?;
 
@@ -93,6 +94,10 @@ class BottomActionButtons extends StatelessWidget {
                     if (updatedPath != null) {
                       entryPath = updatedPath;
                     }
+                  }
+
+                  if (description != null && description.trim().isNotEmpty) {
+                    await vm.setDescriptionForEntry(entryPath, description.trim());
                   }
 
                   if (rating != null) {

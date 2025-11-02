@@ -6,13 +6,13 @@ import '../../model/mood.dart';
 
 class VideoEditBottomSheet extends StatefulWidget {
   final String currentTitle;
+  final String? currentDescription;
   final int? currentRating;
   final List<Mood> currentMoods;
-  final bool showDeleteButton;
   final DateTime? currentDate;
   final bool isNewVideo;
 
-  const VideoEditBottomSheet({super.key, required this.currentTitle, this.currentRating, required this.currentMoods, this.showDeleteButton = false, this.currentDate, this.isNewVideo = false});
+  const VideoEditBottomSheet({super.key, required this.currentTitle, this.currentDescription, this.currentRating, required this.currentMoods, this.currentDate, this.isNewVideo = false});
 
   @override
   State<VideoEditBottomSheet> createState() => _VideoEditBottomSheetState();
@@ -20,7 +20,9 @@ class VideoEditBottomSheet extends StatefulWidget {
 
 class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
   late TextEditingController _titleController;
+  late TextEditingController _descriptionController;
   late FocusNode _titleFocusNode;
+  late FocusNode _descriptionFocusNode;
   late int _rating;
   late Set<Mood> _selectedMoods;
   late DateTime _selectedDate;
@@ -29,7 +31,9 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.currentTitle);
+    _descriptionController = TextEditingController(text: widget.currentDescription ?? '');
     _titleFocusNode = FocusNode();
+    _descriptionFocusNode = FocusNode();
     _rating = widget.currentRating ?? 0;
     _selectedMoods = widget.currentMoods.toSet();
     _selectedDate = widget.currentDate ?? DateTime.now();
@@ -43,12 +47,14 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
   @override
   void dispose() {
     _titleController.dispose();
+    _descriptionController.dispose();
     _titleFocusNode.dispose();
+    _descriptionFocusNode.dispose();
     super.dispose();
   }
 
   Map<String, dynamic> _getResult() {
-    return {'title': _titleController.text.trim(), 'rating': _rating == 0 ? null : _rating, 'moods': _selectedMoods.toList(), if (kDebugMode) 'date': _selectedDate};
+    return {'title': _titleController.text.trim(), 'description': _descriptionController.text.trim(), 'rating': _rating == 0 ? null : _rating, 'moods': _selectedMoods.toList(), if (kDebugMode) 'date': _selectedDate};
   }
 
   @override
@@ -89,7 +95,7 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: MainAxisSize.max,
           children: [
             // Header
             Padding(
@@ -122,7 +128,8 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                           Navigator.of(context).pop({'discard': true});
                         }
                       },
-                    ),
+                    )
+                
                 ],
               ),
             ),
@@ -138,24 +145,39 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                     TextField(
                       controller: _titleController,
                       focusNode: _titleFocusNode,
+                      textInputAction: TextInputAction.next,
+                      onSubmitted: (_) {
+                        _descriptionFocusNode.requestFocus();
+                      },
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
-                        hintText: 'Video title',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF2C2C2C)),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        hintText: 'Başlık',
+                        hintStyle: TextStyle(fontSize: 18, color: Colors.grey[400]),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 4),
+                    // Description
+                    TextField(
+                      controller: _descriptionController,
+                      focusNode: _descriptionFocusNode,
+                      textInputAction: TextInputAction.done,
+                      maxLines: null,
+                      minLines: 3,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
+                      decoration: InputDecoration(
+                        hintText: 'Açıklama (isteğe bağlı)',
+                        hintStyle: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     // Debug: Date picker
                     if (kDebugMode) ...[
                       GestureDetector(
@@ -272,24 +294,6 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                             padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
                           child: const Text('Save', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
-                        ),
-                      )
-                    : widget.showDeleteButton
-                    ? Align(
-                        alignment: Alignment.centerRight,
-                        child: SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: IconButton(
-                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 22),
-                            onPressed: () {
-                              Navigator.pop(context, {'delete': true});
-                            },
-                            style: IconButton.styleFrom(
-                              side: const BorderSide(color: Colors.red),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
                         ),
                       )
                     : const SizedBox.shrink(),

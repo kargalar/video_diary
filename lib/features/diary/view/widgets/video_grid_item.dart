@@ -21,6 +21,7 @@ class VideoGridItem extends StatelessWidget {
     final date = entry.date as DateTime;
     final thumb = entry.thumbnailPath as String?;
     final title = entry.title as String?;
+    final description = entry.description as String?;
     final moods = (entry.moods as List<Mood>?) ?? [];
     final rating = entry.rating as int?;
 
@@ -89,43 +90,63 @@ class VideoGridItem extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
-                        // Date
-                        Text(
-                          _formatDate(date),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.white70,
-                            shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+                        // Description
+                        if (description?.isNotEmpty == true) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            description!,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.white60,
+                              shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
+                        ],
                         const SizedBox(height: 6),
-                        // Moods and Rating
+                        // Date, Moods and Rating - Row
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // Moods
-                            if (moods.isNotEmpty)
-                              Expanded(
-                                child: Wrap(spacing: 2, children: moods.map((mood) => Text(mood.emoji, style: const TextStyle(fontSize: 14))).toList()),
+                            // Date
+                            Text(
+                              _formatDate(date),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.white70,
+                                shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
                               ),
-                            // Rating
-                            if ((rating ?? 0) > 0)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(color: Colors.amber.withAlpha(230), borderRadius: BorderRadius.circular(8)),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.star, size: 12, color: Colors.white),
-                                    const SizedBox(width: 2),
-                                    Text(
-                                      '$rating',
-                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                            ),
+                            // Moods and Rating
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                // Moods
+                                if (moods.isNotEmpty) Wrap(spacing: 2, children: moods.map((mood) => Text(mood.emoji, style: const TextStyle(fontSize: 14))).toList()),
+                                // Rating
+                                if ((rating ?? 0) > 0) ...[
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(color: Colors.amber.withAlpha(230), borderRadius: BorderRadius.circular(8)),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.star, size: 12, color: Colors.white),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          '$rating',
+                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ],
                         ),
                       ],
@@ -142,6 +163,7 @@ class VideoGridItem extends StatelessWidget {
 
   Future<void> _openEditBottomSheet(BuildContext context) async {
     final title = entry.title as String?;
+    final description = entry.description as String?;
     final rating = entry.rating as int?;
     final moods = (entry.moods as List<Mood>?) ?? [];
     final date = entry.date as DateTime?;
@@ -152,7 +174,7 @@ class VideoGridItem extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (context) => SizedBox(
         height: MediaQuery.of(context).size.height * 0.7,
-        child: VideoEditBottomSheet(currentTitle: title ?? '', currentRating: rating, currentMoods: moods, showDeleteButton: true, currentDate: date),
+        child: VideoEditBottomSheet(currentTitle: title ?? '', currentDescription: description, currentRating: rating, currentMoods: moods, currentDate: date),
       ),
     );
 

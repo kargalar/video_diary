@@ -346,7 +346,9 @@ class _DiaryGridState extends State<_DiaryGrid> {
   Future<void> _handleEdit(DiaryViewModel vm, dynamic e, Map<String, dynamic> updates) async {
     var path = e.path as String;
     final title = e.title as String?;
+    final description = e.description as String?;
     final newTitle = updates['title'] as String;
+    final newDescription = updates['description'] as String?;
     final newRating = updates['rating'] as int?;
     final newMoods = updates['moods'] as List<Mood>;
     final newDate = updates['date'] as DateTime?;
@@ -356,6 +358,10 @@ class _DiaryGridState extends State<_DiaryGrid> {
       if (updatedPath != null) {
         path = updatedPath;
       }
+    }
+
+    if (newDescription != description) {
+      await vm.setDescriptionForEntry(path, newDescription ?? '');
     }
 
     if (newRating != (e.rating as int?)) {

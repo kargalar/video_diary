@@ -143,9 +143,18 @@ class DiaryViewModel extends ChangeNotifier {
     final idx = _entries.indexWhere((e) => e.path == path);
     if (idx == -1) return;
     final old = _entries[idx];
-    _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, rating: rating.clamp(1, 5), moods: old.moods);
+    _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: old.description, rating: rating.clamp(1, 5), moods: old.moods);
     await _repo.save(_entries);
     await _recomputeDailyAverageForDay(old.date);
+    notifyListeners();
+  }
+
+  Future<void> setDescriptionForEntry(String path, String description) async {
+    final idx = _entries.indexWhere((e) => e.path == path);
+    if (idx == -1) return;
+    final old = _entries[idx];
+    _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: description.isEmpty ? null : description, rating: old.rating, moods: old.moods);
+    await _repo.save(_entries);
     notifyListeners();
   }
 
@@ -153,7 +162,7 @@ class DiaryViewModel extends ChangeNotifier {
     final idx = _entries.indexWhere((e) => e.path == path);
     if (idx == -1) return;
     final old = _entries[idx];
-    _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, rating: old.rating, moods: moods);
+    _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: old.description, rating: old.rating, moods: moods);
     await _repo.save(_entries);
     await _recomputeDailyMoodsForDay(old.date);
     notifyListeners();
@@ -163,7 +172,7 @@ class DiaryViewModel extends ChangeNotifier {
     final idx = _entries.indexWhere((e) => e.path == path);
     if (idx == -1) return;
     final old = _entries[idx];
-    _entries[idx] = DiaryEntry(path: old.path, date: newDate, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, rating: old.rating, moods: old.moods);
+    _entries[idx] = DiaryEntry(path: old.path, date: newDate, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: old.description, rating: old.rating, moods: old.moods);
     await _repo.save(_entries);
     notifyListeners();
   }
@@ -177,7 +186,7 @@ class DiaryViewModel extends ChangeNotifier {
     for (var i = 0; i < _entries.length; i++) {
       final e = _entries[i];
       if (_keyFor(e.date) == key && e.rating != null) {
-        _entries[i] = DiaryEntry(path: e.path, date: e.date, thumbnailPath: e.thumbnailPath, durationMs: e.durationMs, fileBytes: e.fileBytes, title: e.title, rating: null);
+        _entries[i] = DiaryEntry(path: e.path, date: e.date, thumbnailPath: e.thumbnailPath, durationMs: e.durationMs, fileBytes: e.fileBytes, title: e.title, description: e.description, rating: null);
       }
     }
     await _repo.save(_entries);
@@ -230,7 +239,7 @@ class DiaryViewModel extends ChangeNotifier {
     final newPath = '$dir${Platform.pathSeparator}$newName';
     try {
       await oldFile.rename(newPath);
-      final updated = DiaryEntry(path: newPath, date: latest.date, thumbnailPath: latest.thumbnailPath, durationMs: latest.durationMs, fileBytes: latest.fileBytes, title: title, rating: latest.rating);
+      final updated = DiaryEntry(path: newPath, date: latest.date, thumbnailPath: latest.thumbnailPath, durationMs: latest.durationMs, fileBytes: latest.fileBytes, title: title, description: latest.description, rating: latest.rating);
       _entries[0] = updated;
       await _repo.save(_entries);
       notifyListeners();
@@ -251,7 +260,7 @@ class DiaryViewModel extends ChangeNotifier {
       final oldFile = File(old.path);
       if (!await oldFile.exists()) {
         // File missing; update title only
-        _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle, rating: old.rating, moods: old.moods);
+        _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle, description: old.description, rating: old.rating, moods: old.moods);
         await _repo.save(_entries);
         notifyListeners();
         return old.path;
@@ -262,7 +271,7 @@ class DiaryViewModel extends ChangeNotifier {
       final newName = 'diary_${stamp}_$safeTitle.mp4';
       final newPath = '$dir${Platform.pathSeparator}$newName';
       await oldFile.rename(newPath);
-      _entries[idx] = DiaryEntry(path: newPath, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle, rating: old.rating, moods: old.moods);
+      _entries[idx] = DiaryEntry(path: newPath, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle, description: old.description, rating: old.rating, moods: old.moods);
       await _repo.save(_entries);
       notifyListeners();
       return newPath;
