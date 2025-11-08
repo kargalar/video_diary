@@ -51,6 +51,7 @@ class BottomActionButtons extends StatelessWidget {
                 return;
               }
 
+              // ignore: use_build_context_synchronously
               final filePath = await Navigator.of(context).pushNamed(RecordingPage.route);
               if (!context.mounted) return;
 

@@ -151,6 +151,7 @@ class _RecordingPageState extends State<RecordingPage> {
                                 setState(() {});
                               } catch (e) {
                                 if (!mounted) return;
+                                // ignore: use_build_context_synchronously
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(e.toString().replaceFirst('Exception: ', ''), style: const TextStyle(color: Colors.white)),

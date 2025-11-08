@@ -16,13 +16,3 @@ start recording altta tek kalmalı. streak ve ayarları taşı.
 
 Download all data
 İmport all data
-
-## ✅ Tamamlanan İşler
-
-### Video Review Sistemi
-- [x] Her 2 video çekiminde bir in-app review isteme sistemi eklendi
-- [x] `shared_preferences` ve `in_app_review` paketleri eklendi
-- [x] `VideoReviewService` servisi oluşturuldu
-- [x] Kullanıcı review tamamladıysa tekrar sorulmuyor
-- [x] Video başarıyla kaydedildiğinde otomatik kontrol yapılıyor
-
