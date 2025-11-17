@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../viewmodel/settings_view_model.dart';
 import '../../diary/viewmodel/diary_view_model.dart';
 import 'privacy_policy_webview_page.dart';
+import 'debug_page.dart';
 
 class SettingsPage extends StatelessWidget {
   static const route = '/settings';
@@ -72,20 +73,18 @@ class SettingsPage extends StatelessWidget {
             child: Text('When reminders are enabled, the app will send a notification at the selected time to record your daily video.', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
           ),
           const Divider(height: 32),
-          // Debug: Test Notification Button
+          // Debug Section
           if (kDebugMode)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  vm.sendTestNotification();
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Test notification sent')));
-                },
-                icon: const Icon(Icons.bug_report),
-                label: const Text('Send Test Notification (Debug)'),
-              ),
+            ListTile(
+              leading: const Icon(Icons.bug_report),
+              title: const Text('Debug'),
+              subtitle: const Text('Test notifications and diagnostics'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(context).pushNamed(DebugPage.route);
+              },
             ),
-          const Divider(height: 32),
+          if (kDebugMode) const Divider(height: 32),
           // Privacy Policy Section
           ListTile(
             leading: const Icon(Icons.privacy_tip),

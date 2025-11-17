@@ -89,4 +89,19 @@ class SettingsViewModel extends ChangeNotifier {
       debugPrint('Error sending test notification: $e');
     }
   }
+
+  /// Test method for debug mode - schedules a test notification for 5 seconds from now
+  Future<void> scheduleTestNotificationIn5Seconds() async {
+    try {
+      await _notifier.init();
+      await _notifier.scheduleTestNotificationIn5Seconds();
+    } catch (e) {
+      debugPrint('Error scheduling test notification: $e');
+    }
+  }
+
+  /// Get diagnostic information about notifications
+  Future<Map<String, dynamic>> getDiagnostics() async {
+    return await _notifier.diagnostics();
+  }
 }

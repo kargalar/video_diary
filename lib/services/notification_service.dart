@@ -39,7 +39,7 @@ class NotificationService {
 
   Future<void> scheduleDaily(int hour, int minute) async {
     final details = NotificationDetails(
-      android: const AndroidNotificationDetails(_channelId, _channelName, channelDescription: 'Daily reminder to record your video diary', importance: Importance.max, priority: Priority.high),
+      android: const AndroidNotificationDetails(_channelId, _channelName, channelDescription: 'Daily reminder to record your video diary', importance: Importance.max, priority: Priority.high, fullScreenIntent: true),
       iOS: const DarwinNotificationDetails(),
       windows: const WindowsNotificationDetails(),
     );
@@ -51,12 +51,40 @@ class NotificationService {
     }
 
     await _ensureAndroidPermissions();
-    // Prefer inexact scheduling to avoid exact alarm restrictions; still repeats daily at selected time
+    // Use exact scheduling for precise notification delivery at the specified time
+    // Always use zonedSchedule() instead of deprecated schedule()
     await _plugin.cancel(1001);
-    await _plugin.zonedSchedule(1001, 'Video Diary', 'Don\'t forget to record today\'s video', scheduled, details, androidScheduleMode: AndroidScheduleMode.inexact, matchDateTimeComponents: DateTimeComponents.time);
+    try {
+      await _plugin.zonedSchedule(1001, 'Video Diary', 'Don\'t forget to record today\'s video', scheduled, details, androidScheduleMode: AndroidScheduleMode.exact, matchDateTimeComponents: DateTimeComponents.time);
+    } catch (e) {
+      // Fallback to inexact if exact fails (e.g., on systems with exact alarm restrictions)
+      await _plugin.zonedSchedule(1001, 'Video Diary', 'Don\'t forget to record today\'s video', scheduled, details, androidScheduleMode: AndroidScheduleMode.inexact, matchDateTimeComponents: DateTimeComponents.time);
+    }
   }
 
   Future<void> cancelAll() => _plugin.cancelAll();
+
+  /// Schedule a test notification for 5 seconds from now (for debugging)
+  Future<void> scheduleTestNotificationIn5Seconds() async {
+    final details = NotificationDetails(
+      android: const AndroidNotificationDetails(_channelId, _channelName, channelDescription: 'Daily reminder to record your video diary', importance: Importance.max, priority: Priority.high, fullScreenIntent: true),
+      iOS: const DarwinNotificationDetails(),
+      windows: const WindowsNotificationDetails(),
+    );
+
+    final now = tz.TZDateTime.now(tz.local);
+    final scheduled = now.add(const Duration(seconds: 5));
+
+    await _ensureAndroidPermissions();
+    // Schedule for exact time (5 seconds from now)
+    await _plugin.cancel(9998);
+    try {
+      await _plugin.zonedSchedule(9998, 'Video Diary Test (Scheduled)', 'This notification was scheduled for 5 seconds from now', scheduled, details, androidScheduleMode: AndroidScheduleMode.exact);
+    } catch (e) {
+      // Fallback to inexact if exact fails
+      await _plugin.zonedSchedule(9998, 'Video Diary Test (Scheduled)', 'This notification was scheduled for 5 seconds from now', scheduled, details, androidScheduleMode: AndroidScheduleMode.inexact);
+    }
+  }
 
   /// Send an immediate test notification (for debugging)
   Future<void> sendTestNotification() async {
@@ -83,7 +111,8 @@ class NotificationService {
     final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     try {
       await android?.requestNotificationsPermission();
+      // Request exact alarm permission for precise notification delivery
+      await android?.requestExactAlarmsPermission();
     } catch (_) {}
-    // Do not prompt for exact alarm; we schedule in inexact mode by default
   }
 }
