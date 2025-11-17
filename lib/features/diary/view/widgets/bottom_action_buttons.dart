@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../viewmodel/diary_view_model.dart';
 import '../../../settings/view/settings_page.dart';
+import '../../../settings/viewmodel/settings_view_model.dart';
 import '../recording_page.dart';
 import 'video_edit_bottom_sheet.dart';
 import '../../../../services/video_review_service.dart';
@@ -109,6 +110,42 @@ class BottomActionButtons extends StatelessWidget {
 
                   if (moods != null && moods.isNotEmpty) {
                     await vm.setMoodsForEntry(entryPath, moods.cast());
+                  }
+
+                  // Show notification prompt if this is the first video
+                  if (context.mounted) {
+                    final settingsVm = context.read<SettingsViewModel>();
+                    if (!settingsVm.state.hasShownNotificationPrompt) {
+                      // Mark prompt as shown
+                      final newSettings = settingsVm.state.copyWith(hasShownNotificationPrompt: true);
+                      await settingsVm.repo.save(newSettings);
+                      settingsVm.loadSettings();
+
+                      // Show dialog
+                      // ignore: use_build_context_synchronously
+                      if (context.mounted) {
+                        final wantNotifications = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Daily Reminders'),
+                            content: const Text('Would you like to receive daily reminders to record your video?'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Not Now')),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                                child: const Text('Enable'),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (wantNotifications == true && context.mounted) {
+                          // Navigate to settings page
+                          Navigator.of(context).pushNamed(SettingsPage.route);
+                        }
+                      }
+                    }
                   }
 
                   // Video başarıyla kaydedildi, review servisi çağrılır
