@@ -51,10 +51,10 @@ class _RecordingPageState extends State<RecordingPage> {
       } else {
         nav.pop();
       }
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _isStopping = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to stop recording.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to stop recording: $e')));
     }
   }
 
