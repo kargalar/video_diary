@@ -115,7 +115,14 @@ class BottomActionButtons extends StatelessWidget {
                   // ignore: use_build_context_synchronously
                   if (context.mounted) {
                     final reviewService = VideoReviewService();
+                    final videoCount = await reviewService.getVideoCount();
+                    final reviewCompleted = await reviewService.isReviewCompleted();
+                    debugPrint('🎬 Review Service - Before increment: Count=$videoCount, Completed=$reviewCompleted');
+
                     await reviewService.incrementVideoCountAndRequestReview();
+
+                    final newCount = await reviewService.getVideoCount();
+                    debugPrint('🎬 Review Service - After increment: Count=$newCount');
                   }
                 }
               }

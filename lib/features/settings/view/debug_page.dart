@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../viewmodel/settings_view_model.dart';
+import '../../../../services/video_review_service.dart';
 
-class DebugPage extends StatelessWidget {
+class DebugPage extends StatefulWidget {
   static const route = '/debug';
   const DebugPage({super.key});
 
+  @override
+  State<DebugPage> createState() => _DebugPageState();
+}
+
+class _DebugPageState extends State<DebugPage> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<SettingsViewModel>();
@@ -41,7 +47,38 @@ class DebugPage extends StatelessWidget {
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 24),
-          const Text('Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('Rating & Review Status', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          FutureBuilder<Map<String, dynamic>>(
+            future: _getRatingInfo(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const CircularProgressIndicator();
+              }
+              final info = snapshot.data!;
+              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildInfoTile('Video Count', '${info['videoCount']} videos recorded'), _buildInfoTile('Review Completed', '${info['reviewCompleted']}'), _buildInfoTile('Next Review At', 'Video #${info['nextReviewAt']}')]);
+            },
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () async {
+              final reviewService = VideoReviewService();
+              await reviewService.resetVideoCount();
+              if (mounted) {
+                setState(() {});
+                if (mounted) {
+                  // ignore: use_build_context_synchronously
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video count and review status reset')));
+                }
+              }
+            },
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reset Review Count'),
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 24),
+          const Text('Notification Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           FutureBuilder<Map<String, dynamic>>(
             future: vm.getDiagnostics(),
@@ -59,6 +96,18 @@ class DebugPage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<Map<String, dynamic>> _getRatingInfo() async {
+    final reviewService = VideoReviewService();
+    final videoCount = await reviewService.getVideoCount();
+    final reviewCompleted = await reviewService.isReviewCompleted();
+
+    // Calculate next review video number (every 2 videos)
+    final nextReviewVideo = ((videoCount ~/ 2) + 1) * 2;
+    final reviewStatusText = videoCount % 2 == 0 && videoCount > 0 ? 'Now!' : '#$nextReviewVideo';
+
+    return {'videoCount': videoCount, 'reviewCompleted': reviewCompleted ? 'Yes ✓' : 'No', 'nextReviewAt': reviewStatusText};
   }
 
   Widget _buildInfoTile(String label, String value) {
