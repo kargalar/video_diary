@@ -18,10 +18,7 @@ class DiaryRepository {
     final box = Hive.box(_boxName);
     final raw = box.get('entries');
     if (raw == null) return [];
-    final list = (raw as List)
-        .cast<Map<dynamic, dynamic>>()
-        .map((e) => DiaryEntry.fromJson(Map<String, dynamic>.from(e)))
-        .toList();
+    final list = (raw as List).cast<Map<dynamic, dynamic>>().map((e) => DiaryEntry.fromJson(Map<String, dynamic>.from(e))).toList();
     list.sort((a, b) => b.date.compareTo(a.date));
     return list;
   }
@@ -31,5 +28,11 @@ class DiaryRepository {
     final box = Hive.box(_boxName);
     final data = entries.map((e) => e.toJson()).toList();
     await box.put('entries', data);
+  }
+
+  Future<void> clear() async {
+    await init();
+    final box = Hive.box(_boxName);
+    await box.put('entries', []);
   }
 }

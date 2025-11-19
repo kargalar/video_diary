@@ -110,4 +110,11 @@ class SettingsViewModel extends ChangeNotifier {
   Future<Map<String, dynamic>> getDiagnostics() async {
     return await _notifier.diagnostics();
   }
+
+  /// Set storage directory (for import operations)
+  Future<void> setStorageDirectory(String directory) async {
+    _state = _state.copyWith(storageDirectory: directory);
+    await _repo.save(_state);
+    notifyListeners();
+  }
 }

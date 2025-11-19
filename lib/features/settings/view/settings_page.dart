@@ -7,6 +7,7 @@ import '../viewmodel/settings_view_model.dart';
 import '../../diary/viewmodel/diary_view_model.dart';
 import 'privacy_policy_webview_page.dart';
 import 'debug_page.dart';
+import 'widgets/export_import_dialog.dart';
 
 class SettingsPage extends StatelessWidget {
   static const route = '/settings';
@@ -125,6 +126,26 @@ class SettingsPage extends StatelessWidget {
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
               }
+            },
+          ),
+          const Divider(height: 16, indent: 0, endIndent: 0),
+          // Export & Import Section
+          ListTile(
+            dense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            leading: const Icon(Icons.cloud_download, size: 20),
+            title: const Text('Export & Import Data', style: TextStyle(fontSize: 14)),
+            subtitle: const Text('Backup your data or restore from another device', style: TextStyle(fontSize: 12)),
+            trailing: const Icon(Icons.chevron_right, size: 20),
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (context) => ExportImportDialog(
+                  onDataImported: () {
+                    diaryVm.load();
+                  },
+                ),
+              );
             },
           ),
           const Divider(height: 16, indent: 0, endIndent: 0),

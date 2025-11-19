@@ -14,6 +14,12 @@ class VideoGridItem extends StatelessWidget {
 
   const VideoGridItem({super.key, required this.entry, required this.onEdit, required this.onDelete});
 
+  // Check if video file exists at the specified path
+  bool _videoExists() {
+    final path = entry.path as String;
+    return File(path).existsSync();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -36,10 +42,17 @@ class VideoGridItem extends StatelessWidget {
         children: [SlidableAction(onPressed: (context) => onDelete(), backgroundColor: Colors.red, foregroundColor: Colors.white, icon: Icons.delete, label: 'Delete', borderRadius: BorderRadius.circular(16))],
       ),
       child: GestureDetector(
-        onTap: () => Navigator.of(context).pushNamed(
-          PlayerPage.route,
-          arguments: PlayerPageArgs(path: path, title: title),
-        ),
+        onTap: () {
+          // Only allow navigation if video file exists
+          if (_videoExists()) {
+            Navigator.of(context).pushNamed(
+              PlayerPage.route,
+              arguments: PlayerPageArgs(path: path, title: title),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ Video file not found. It may have been moved or deleted.'), backgroundColor: Colors.red, duration: Duration(seconds: 2)));
+          }
+        },
         onLongPress: () => _openEditBottomSheet(context),
         child: Container(
           decoration: BoxDecoration(
@@ -52,11 +65,27 @@ class VideoGridItem extends StatelessWidget {
               children: [
                 // Thumbnail - full container
                 Positioned.fill(
-                  child: thumb != null
+                  child: thumb != null && _videoExists()
                       ? Image.file(File(thumb), fit: BoxFit.cover)
                       : Container(
                           color: Colors.grey[200],
-                          child: Icon(Icons.videocam_outlined, size: 48, color: Colors.grey[400]),
+                          child: !_videoExists()
+                              ? Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.warning_rounded, size: 48, color: Colors.red[300]),
+                                    const SizedBox(height: 8),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                                      child: Text(
+                                        'Video konumda yok',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(fontSize: 12, color: Colors.red[400], fontWeight: FontWeight.w500),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Icon(Icons.videocam_outlined, size: 48, color: Colors.grey[400]),
                         ),
                 ),
                 // Gradient overlay

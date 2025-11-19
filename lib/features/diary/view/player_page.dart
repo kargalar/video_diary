@@ -90,8 +90,27 @@ class _PlayerPageState extends State<PlayerPage> {
       appBar: null,
       backgroundColor: Colors.black,
       body: _isError
-          ? const Center(
-              child: Text('Could not open video', style: TextStyle(color: Colors.white)),
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.warning_rounded, size: 64, color: Colors.red[300]),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Video konumda yok',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Video dosyası silinmiş veya taşınmış olabilir.\nLütfen konumunu kontrol edin.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.arrow_back), label: const Text('Geri Dön')),
+                ],
+              ),
             )
           : _controller == null
           ? const Center(child: CircularProgressIndicator())
