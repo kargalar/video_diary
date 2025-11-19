@@ -38,9 +38,17 @@ class VideoService {
   Future<void> stopRecordingTo(String filePath) async {
     final c = _controller;
     if (c == null) throw StateError('Camera not initialized');
-    if (!c.value.isRecordingVideo) return;
-    final file = await c.stopVideoRecording();
-    await File(file.path).copy(filePath);
+    if (!c.value.isRecordingVideo) {
+      // Video is not recording, nothing to stop
+      return;
+    }
+    try {
+      final file = await c.stopVideoRecording();
+      await File(file.path).copy(filePath);
+    } catch (e) {
+      // Ensure the original recording file is cleaned up if copy fails
+      throw StateError('Failed to stop recording: $e');
+    }
   }
 
   Future<VideoPlayerController> createPlayer(String filePath) async {

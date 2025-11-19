@@ -98,44 +98,57 @@ class DiaryViewModel extends ChangeNotifier {
     if (_video.controller == null || !_video.controller!.value.isInitialized) {
       await _video.initCamera(landscape: settings.landscape);
     }
-    await _video.startRecording(filePath);
-    _isRecording = true;
-    _recordingStartedAt = DateTime.now();
-    notifyListeners();
+
+    // Try to start recording, and ensure state is set only on success
+    try {
+      await _video.startRecording(filePath);
+      _isRecording = true;
+      _recordingStartedAt = DateTime.now();
+      notifyListeners();
+    } catch (e) {
+      // If startRecording fails, ensure _isRecording stays false
+      _isRecording = false;
+      _recordingStartedAt = null;
+      rethrow;
+    }
   }
 
   Future<String?> stopRecording() async {
     if (!_isRecording) return null;
-    var settings = await _settingsRepo.load();
-    final base = settings.storageDirectory ?? (await _storage.pickDirectory());
+    try {
+      var settings = await _settingsRepo.load();
+      final base = settings.storageDirectory ?? (await _storage.pickDirectory());
 
-    // If user cancelled location selection or it returned null, throw error
-    if (base == null) {
-      throw Exception('Storage location not selected. Location selection is required to save videos.');
+      // If user cancelled location selection or it returned null, throw error
+      if (base == null) {
+        throw Exception('Storage location not selected. Location selection is required to save videos.');
+      }
+
+      if (settings.storageDirectory == null) {
+        settings = settings.copyWith(storageDirectory: base);
+        await _settingsRepo.save(settings);
+      }
+      final dir = await _storage.ensureDiaryFolder(base);
+      final filename = _fileNameFor(DateTime.now());
+      final filePath = '${dir.path}${Platform.pathSeparator}$filename';
+
+      await _video.stopRecordingTo(filePath);
+      final file = File(filePath);
+      final bytes = await file.length();
+      final thumbPath = await vt.VideoThumbnail.thumbnailFile(video: filePath, imageFormat: vt.ImageFormat.PNG, maxHeight: 200, quality: 70);
+      // duration is not trivial to fetch without ffprobe; use video_player quick init
+      final durMs = await _probeDurationMs(filePath);
+      final entry = DiaryEntry(path: filePath, date: DateTime.now(), thumbnailPath: thumbPath, durationMs: durMs, fileBytes: bytes);
+      _entries = [entry, ..._entries];
+      await _repo.save(_entries);
+      _recomputeStreak();
+      return filePath;
+    } finally {
+      // Always clear recording state, even if an error occurs
+      _isRecording = false;
+      _recordingStartedAt = null;
+      notifyListeners();
     }
-
-    if (settings.storageDirectory == null) {
-      settings = settings.copyWith(storageDirectory: base);
-      await _settingsRepo.save(settings);
-    }
-    final dir = await _storage.ensureDiaryFolder(base);
-    final filename = _fileNameFor(DateTime.now());
-    final filePath = '${dir.path}${Platform.pathSeparator}$filename';
-
-    await _video.stopRecordingTo(filePath);
-    _isRecording = false;
-    _recordingStartedAt = null;
-    final file = File(filePath);
-    final bytes = await file.length();
-    final thumbPath = await vt.VideoThumbnail.thumbnailFile(video: filePath, imageFormat: vt.ImageFormat.PNG, maxHeight: 200, quality: 70);
-    // duration is not trivial to fetch without ffprobe; use video_player quick init
-    final durMs = await _probeDurationMs(filePath);
-    final entry = DiaryEntry(path: filePath, date: DateTime.now(), thumbnailPath: thumbPath, durationMs: durMs, fileBytes: bytes);
-    _entries = [entry, ..._entries];
-    await _repo.save(_entries);
-    _recomputeStreak();
-    notifyListeners();
-    return filePath;
   }
 
   // Per-entry rating and daily average helpers
@@ -249,6 +262,12 @@ class DiaryViewModel extends ChangeNotifier {
   }
 
   Future<void> disposeCamera() async {
+    // Ensure recording state is cleared
+    if (_isRecording) {
+      _isRecording = false;
+      _recordingStartedAt = null;
+      notifyListeners();
+    }
     await _video.dispose();
   }
 
