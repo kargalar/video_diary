@@ -148,45 +148,6 @@ class SettingsPage extends StatelessWidget {
               );
             },
           ),
-          const Divider(height: 16, indent: 0, endIndent: 0),
-          // Clear All Videos Section
-          ListTile(
-            dense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            leading: const Icon(Icons.delete_forever, color: Colors.red, size: 20),
-            title: const Text('Clear All Videos', style: TextStyle(color: Colors.red, fontSize: 14)),
-            subtitle: const Text('Delete all videos and reset all data', style: TextStyle(fontSize: 12)),
-            trailing: SizedBox(
-              height: 32,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0)),
-                onPressed: () async {
-                  final confirmed = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Clear All Videos'),
-                      content: const Text('This will permanently delete all your videos, thumbnails, and reset all ratings and streaks. This action cannot be undone. Are you sure?'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-                        TextButton(
-                          style: TextButton.styleFrom(foregroundColor: Colors.red),
-                          onPressed: () => Navigator.of(context).pop(true),
-                          child: const Text('Delete All'),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (confirmed == true) {
-                    final success = await diaryVm.clearAll();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(success ? 'All videos deleted successfully' : 'Failed to delete videos'), backgroundColor: success ? Colors.green : Colors.red));
-                    }
-                  }
-                },
-                child: const Text('Clear All', style: TextStyle(fontSize: 12)),
-              ),
-            ),
-          ),
         ],
       ),
     );
