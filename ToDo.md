@@ -1,18 +1,13 @@
-bir de not kısmı ekle onu da göster belki.
-
 ana sayfadaki streak ile ilgili şeyler ayarlardan akaptılabilsin.
 
 takvimde bottom streak durumunu göster. gaçıncı günde olduğunu
 
 arka kamera açılsın??
 
-video kayderken ve izlerken ekran dönmeden yapabilri miyiz.
-
-video kaydettikten sonra bir bozukluk oluyor.
-
 takvimi sağa sola kaydırarak da gidilsin.
 
 start recording altta tek kalmalı. streak ve ayarları taşı.
 
-Download all data
-İmport all data
+○ Google drive video yedeklene
+○ Settingsdekinselte all butonu kaldır
+○ Spalash screende sadece transparan icon. Bu sayede karanlık tema sorun olmaz
