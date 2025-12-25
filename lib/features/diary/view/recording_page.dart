@@ -255,6 +255,29 @@ class _RecordingPageState extends State<RecordingPage> {
                             style: TextStyle(color: Colors.white70, fontSize: 16),
                           ),
                         ),
+                        if (!vm.isRecording)
+                          Material(
+                            color: Colors.black45,
+                            shape: const CircleBorder(),
+                            child: IconButton(
+                              tooltip: 'Switch camera',
+                              icon: const Icon(Icons.cameraswitch, color: Colors.white),
+                              onPressed: _isStopping
+                                  ? null
+                                  : () async {
+                                      final messenger = ScaffoldMessenger.of(context);
+                                      try {
+                                        await vm.toggleCamera();
+                                        if (!mounted) return;
+                                        setState(() => _controller = vm.cameraController);
+                                        await _lockCameraOrientation(true);
+                                      } catch (e) {
+                                        if (!mounted) return;
+                                        messenger.showSnackBar(SnackBar(content: Text('Failed to switch camera: $e')));
+                                      }
+                                    },
+                            ),
+                          ),
                       ],
                     ),
                   ),

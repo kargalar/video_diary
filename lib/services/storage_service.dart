@@ -29,6 +29,18 @@ class StorageService {
     if (!await d.exists()) {
       await d.create(recursive: true);
     }
+
+    // Create videos and thumbnails subdirectories
+    final videosDir = Directory('${d.path}${Platform.pathSeparator}videos');
+    final thumbsDir = Directory('${d.path}${Platform.pathSeparator}thumbnails');
+
+    if (!await videosDir.exists()) {
+      await videosDir.create(recursive: true);
+    }
+    if (!await thumbsDir.exists()) {
+      await thumbsDir.create(recursive: true);
+    }
+
     return d;
   }
 }

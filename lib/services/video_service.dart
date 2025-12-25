@@ -8,9 +8,19 @@ class VideoService {
   CameraController? _controller;
   List<CameraDescription>? _cameras;
 
-  Future<CameraController> initCamera({bool landscape = false, ResolutionPreset preset = ResolutionPreset.high}) async {
+  CameraLensDirection _lensDirection = CameraLensDirection.front;
+
+  CameraLensDirection get lensDirection => _lensDirection;
+
+  Future<CameraController> initCamera({bool landscape = false, ResolutionPreset preset = ResolutionPreset.high, CameraLensDirection? lensDirection}) async {
     _cameras ??= await availableCameras();
-    final camera = _cameras!.firstWhere((c) => c.lensDirection == CameraLensDirection.front, orElse: () => _cameras!.first);
+    if (lensDirection != null) {
+      _lensDirection = lensDirection;
+    }
+
+    final camera = _cameras!.firstWhere((c) => c.lensDirection == _lensDirection, orElse: () => _cameras!.first);
+
+    await _controller?.dispose();
     _controller = CameraController(camera, preset, enableAudio: true, imageFormatGroup: ImageFormatGroup.nv21);
     await _controller!.initialize();
     if (landscape) {
@@ -19,6 +29,20 @@ class VideoService {
       await _controller!.lockCaptureOrientation(DeviceOrientation.portraitUp);
     }
     return _controller!;
+  }
+
+  Future<CameraController> switchCamera({bool landscape = false, ResolutionPreset preset = ResolutionPreset.high}) async {
+    _cameras ??= await availableCameras();
+    final hasFront = _cameras!.any((c) => c.lensDirection == CameraLensDirection.front);
+    final hasBack = _cameras!.any((c) => c.lensDirection == CameraLensDirection.back);
+
+    if (_lensDirection == CameraLensDirection.front && hasBack) {
+      _lensDirection = CameraLensDirection.back;
+    } else if (_lensDirection == CameraLensDirection.back && hasFront) {
+      _lensDirection = CameraLensDirection.front;
+    }
+
+    return initCamera(landscape: landscape, preset: preset, lensDirection: _lensDirection);
   }
 
   CameraController? get controller => _controller;

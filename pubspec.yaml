@@ -2,7 +2,7 @@ name: video_diary
 description: "Video Diary - Your Personal Video Journal"
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
-version: 1.0.8+8
+version: 1.0.9+9
 
 environment:
   sdk: ^3.8.1
@@ -32,6 +32,7 @@ dependencies:
   webview_flutter: ^4.13.0
   shared_preferences: ^2.5.3
   in_app_review: ^2.0.11
+  archive: ^4.0.7
 
 dev_dependencies:
   flutter_test:

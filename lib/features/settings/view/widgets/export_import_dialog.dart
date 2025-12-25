@@ -4,7 +4,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../features/diary/data/diary_repository.dart';
+import '../../../../features/diary/viewmodel/diary_view_model.dart';
 import '../../../../features/settings/viewmodel/settings_view_model.dart';
 import '../../../../services/export_import_service.dart';
 
@@ -19,7 +19,6 @@ class ExportImportDialog extends StatefulWidget {
 
 class _ExportImportDialogState extends State<ExportImportDialog> {
   final _service = ExportImportService();
-  final _diaryRepo = DiaryRepository();
   bool _isLoading = false;
 
   @override
@@ -30,18 +29,18 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Export saves all your video data (title, description, rating, mood, etc.) to a JSON file. Use Import to load data from another device.', style: TextStyle(fontSize: 13, height: 1.5)),
+          const Text('Export creates a ZIP backup that includes your videos, cover images, and all app data. Use Import to restore from a backup.', style: TextStyle(fontSize: 13, height: 1.5)),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
-            child: const Text('⚠️ Note: Export only saves metadata. You must manually transfer the actual video files to the new device.', style: TextStyle(fontSize: 11, height: 1.4, color: Color(0xFF1976D2))),
+            child: const Text('📦 Backup includes: videos, thumbnails, titles/descriptions/ratings/moods, daily data, and settings.', style: TextStyle(fontSize: 11, height: 1.4, color: Color(0xFF1976D2))),
           ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(8)),
-            child: const Text('📁 During Import: You will be asked to select the folder where your video files are located on this device.', style: TextStyle(fontSize: 11, height: 1.4, color: Color(0xFFF57F17))),
+            child: const Text('📁 During Import: You will be asked where to restore the backup files on this device.', style: TextStyle(fontSize: 11, height: 1.4, color: Color(0xFFF57F17))),
           ),
           const SizedBox(height: 12),
           Container(
@@ -66,7 +65,7 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
                 ElevatedButton.icon(
                   onPressed: _handleClearAll,
                   icon: const Icon(Icons.delete_sweep),
-                  label: const Text('Clear All Videos'),
+                  label: const Text('Clear All Data'),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red[400]),
                 ),
               ],
@@ -83,7 +82,7 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
 
       // Generate filename
       final timestamp = DateTime.now().toString().replaceAll(' ', '_').replaceAll(':', '-').split('.')[0];
-      final fileName = 'video_diary_export_$timestamp.json';
+      final fileName = 'video_diary_backup_$timestamp.zip';
 
       // Ask user to select where to save the file (choose directory)
       final selectedDir = await getDirectoryPath();
@@ -121,8 +120,8 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
 
   Future<void> _handleImport() async {
     try {
-      // Step 1: Ask user to select JSON file
-      const typeGroup = XTypeGroup(label: 'JSON', extensions: <String>['json']);
+      // Step 1: Ask user to select ZIP backup
+      const typeGroup = XTypeGroup(label: 'ZIP', extensions: <String>['zip']);
       final file = await openFile(acceptedTypeGroups: <XTypeGroup>[typeGroup]);
 
       if (file == null) return;
@@ -140,7 +139,7 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
             '• Titles, descriptions, ratings\n'
             '• Moods and all other data\n\n'
             'will be permanently deleted.\n\n'
-            'If you want to continue, select the folder where your old videos are located. Then they will be copied to the storage folder.',
+            'If you want to continue, select a folder to restore the backup files (videos and thumbnails) on this device.',
             style: TextStyle(fontSize: 12, height: 1.6),
           ),
           actions: [
@@ -148,7 +147,7 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Continue & Select Folder', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text('Continue & Select Restore Folder', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -156,13 +155,13 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
 
       if (continueImport != true) return;
 
-      // Step 3: Ask user to select video folder (old videos location)
+      // Step 3: Ask user to select restore folder
       if (!mounted) return;
-      final videoDirPath = await getDirectoryPath();
+      final restoreDirPath = await getDirectoryPath();
 
-      if (videoDirPath == null) {
+      if (restoreDirPath == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Import cancelled: Video directory not selected'), backgroundColor: Colors.orange));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Import cancelled: Restore directory not selected'), backgroundColor: Colors.orange));
         }
         return;
       }
@@ -172,15 +171,15 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
         setState(() => _isLoading = true);
       }
 
-      final jsonFile = File(file.path);
-      final importedCount = await _service.importData(jsonFile, videoDirPath, replaceExisting: true);
+      final zipFile = File(file.path);
+      final importedCount = await _service.importData(zipFile, restoreDirPath, replaceExisting: true);
 
       if (mounted) {
         // Save the selected video directory as storage directory
         if (!mounted) return;
         try {
           final settingsVm = context.read<SettingsViewModel>();
-          settingsVm.setStorageDirectory(videoDirPath);
+          settingsVm.setStorageDirectory(restoreDirPath);
         } catch (e) {
           debugPrint('⚠️ Failed to save storage directory: $e');
         }
@@ -205,9 +204,9 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('⚠️ Clear All Videos?'),
+        title: const Text('⚠️ Clear All Data?'),
         content: const Text(
-          'This will permanently DELETE ALL your videos and data.\n\n'
+          'This will permanently DELETE ALL your videos, thumbnails, ratings, moods, streak data, and settings.\n\n'
           'This action CANNOT be undone!\n\n'
           'Are you sure?',
           style: TextStyle(fontSize: 12, height: 1.6),
@@ -230,11 +229,18 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
         setState(() => _isLoading = true);
       }
 
-      await _diaryRepo.clear();
+      // Use DiaryViewModel's clearAll to properly clear all data including day data, streak, ratings, moods
+      if (!mounted) return;
+      final diaryVm = context.read<DiaryViewModel>();
+      final success = await diaryVm.clearAll();
+
+      if (!success) {
+        throw Exception('Failed to clear data');
+      }
 
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ All videos cleared!'), backgroundColor: Colors.green, duration: Duration(seconds: 2)));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ All data cleared!'), backgroundColor: Colors.green, duration: Duration(seconds: 2)));
         widget.onDataImported();
       }
     } catch (e) {

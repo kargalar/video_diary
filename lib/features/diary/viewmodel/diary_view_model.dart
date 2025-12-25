@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:camera/camera.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_thumbnail/video_thumbnail.dart' as vt;
 
 import '../../../services/storage_service.dart';
@@ -20,6 +21,10 @@ class DiaryViewModel extends ChangeNotifier {
   final StorageService _storage = StorageService();
   final VideoService _video = VideoService();
   final DayDataRepository _dayRepo = DayDataRepository();
+
+  static const String _preferredCameraLensKey = 'preferred_camera_lens';
+  CameraLensDirection _preferredLensDirection = CameraLensDirection.front;
+  bool _preferredLensLoaded = false;
 
   List<DiaryEntry> _entries = [];
   List<DiaryEntry> get entries => _entries;
@@ -60,10 +65,41 @@ class DiaryViewModel extends ChangeNotifier {
 
   CameraController? get cameraController => _video.controller;
 
+  CameraLensDirection get preferredLensDirection => _preferredLensDirection;
+
+  Future<void> _ensurePreferredLensLoaded() async {
+    if (_preferredLensLoaded) return;
+    final prefs = await SharedPreferences.getInstance();
+    final v = prefs.getString(_preferredCameraLensKey);
+    if (v == 'back') {
+      _preferredLensDirection = CameraLensDirection.back;
+    } else if (v == 'front') {
+      _preferredLensDirection = CameraLensDirection.front;
+    }
+    _preferredLensLoaded = true;
+  }
+
+  Future<void> _savePreferredLens(CameraLensDirection dir) async {
+    final prefs = await SharedPreferences.getInstance();
+    final v = dir == CameraLensDirection.back ? 'back' : 'front';
+    await prefs.setString(_preferredCameraLensKey, v);
+  }
+
   Future<void> initCamera() async {
     if (_video.controller != null && _video.controller!.value.isInitialized) return;
+    await _ensurePreferredLensLoaded();
     final settings = await _settingsRepo.load();
-    await _video.initCamera(landscape: settings.landscape);
+    await _video.initCamera(landscape: settings.landscape, lensDirection: _preferredLensDirection);
+    notifyListeners();
+  }
+
+  Future<void> toggleCamera() async {
+    if (_isRecording) return;
+    await _ensurePreferredLensLoaded();
+    final settings = await _settingsRepo.load();
+    await _video.switchCamera(landscape: settings.landscape);
+    _preferredLensDirection = _video.lensDirection;
+    await _savePreferredLens(_preferredLensDirection);
     notifyListeners();
   }
 
@@ -93,10 +129,11 @@ class DiaryViewModel extends ChangeNotifier {
     }
     final dir = await _storage.ensureDiaryFolder(base);
     final filename = _fileNameFor(DateTime.now());
-    final filePath = '${dir.path}${Platform.pathSeparator}$filename';
+    final filePath = '${dir.path}${Platform.pathSeparator}videos${Platform.pathSeparator}$filename';
 
     if (_video.controller == null || !_video.controller!.value.isInitialized) {
-      await _video.initCamera(landscape: settings.landscape);
+      await _ensurePreferredLensLoaded();
+      await _video.initCamera(landscape: settings.landscape, lensDirection: _preferredLensDirection);
     }
 
     // Try to start recording, and ensure state is set only on success
@@ -130,12 +167,15 @@ class DiaryViewModel extends ChangeNotifier {
       }
       final dir = await _storage.ensureDiaryFolder(base);
       final filename = _fileNameFor(DateTime.now());
-      final filePath = '${dir.path}${Platform.pathSeparator}$filename';
+      final filePath = '${dir.path}${Platform.pathSeparator}videos${Platform.pathSeparator}$filename';
 
       await _video.stopRecordingTo(filePath);
       final file = File(filePath);
       final bytes = await file.length();
-      final thumbPath = await vt.VideoThumbnail.thumbnailFile(video: filePath, imageFormat: vt.ImageFormat.PNG, maxHeight: 200, quality: 70);
+
+      // Generate thumbnail in thumbnails folder
+      final thumbDir = '${dir.path}${Platform.pathSeparator}thumbnails';
+      final thumbPath = await vt.VideoThumbnail.thumbnailFile(video: filePath, thumbnailPath: thumbDir, imageFormat: vt.ImageFormat.PNG, maxHeight: 200, quality: 70);
       // duration is not trivial to fetch without ffprobe; use video_player quick init
       final durMs = await _probeDurationMs(filePath);
       final entry = DiaryEntry(path: filePath, date: DateTime.now(), thumbnailPath: thumbPath, durationMs: durMs, fileBytes: bytes);
