@@ -68,9 +68,22 @@ class VideoService {
     }
     try {
       final file = await c.stopVideoRecording();
-      await File(file.path).copy(filePath);
+      final sourceFile = File(file.path);
+      final targetFile = File(filePath);
+
+      // Ensure target directory exists
+      await targetFile.parent.create(recursive: true);
+
+      // Try to rename (move) first - faster and more efficient
+      // If rename fails (cross-device), fall back to copy + delete
+      try {
+        await sourceFile.rename(filePath);
+      } catch (_) {
+        await sourceFile.copy(filePath);
+        await sourceFile.delete();
+      }
     } catch (e) {
-      // Ensure the original recording file is cleaned up if copy fails
+      // Ensure the original recording file is cleaned up if operation fails
       throw StateError('Failed to stop recording: $e');
     }
   }

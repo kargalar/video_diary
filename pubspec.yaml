@@ -1,7 +1,5 @@
 name: video_diary
 description: "Video Diary - Your Personal Video Journal"
-# pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.9+9
 
 environment:
@@ -10,8 +8,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   provider: ^6.1.2
   camera: ^0.11.2
@@ -24,6 +20,7 @@ dependencies:
   timezone: ^0.10.1
   flutter_timezone: ^5.0.0
   video_thumbnail: ^0.5.3
+  device_info_plus: ^11.2.0
   flutter_slidable: ^4.0.3
   hive: ^2.2.3
   hive_flutter: ^1.1.0

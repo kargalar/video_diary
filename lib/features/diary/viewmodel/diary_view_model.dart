@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:camera/camera.dart';
@@ -107,12 +108,25 @@ class DiaryViewModel extends ChangeNotifier {
   Future<bool> requestAndCheckPermissions() async {
     final cameraStatus = await Permission.camera.request();
     final micStatus = await Permission.microphone.request();
+
+    // Android 13+ (API 33+) requires granular media permissions
+    if (Platform.isAndroid) {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      if (androidInfo.version.sdkInt >= 33) {
+        final videoStatus = await Permission.videos.request();
+        return cameraStatus.isGranted && micStatus.isGranted && videoStatus.isGranted;
+      }
+    }
+
     return cameraStatus.isGranted && micStatus.isGranted;
   }
 
   Future<void> startRecording() async {
-    await Permission.camera.request();
-    await Permission.microphone.request();
+    // Check permissions before starting
+    final hasPermissions = await requestAndCheckPermissions();
+    if (!hasPermissions) {
+      throw Exception('Required permissions not granted. Please grant camera, microphone and storage permissions to record videos.');
+    }
 
     var settings = await _settingsRepo.load();
     final base = settings.storageDirectory ?? (await _storage.pickDirectory());
