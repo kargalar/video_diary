@@ -37,28 +37,71 @@ class NotificationService {
     _initialized = true;
   }
 
-  Future<void> scheduleDaily(int hour, int minute) async {
+  /// Schedule notifications for the next 7 days at the specified time
+  /// Uses zonedSchedule (scheduled notifications) instead of daily repeating notifications
+  /// because scheduled notifications are more reliable on most Android devices
+  Future<void> scheduleWeeklyNotifications(int hour, int minute) async {
+    // Ensure initialization
+    if (!_initialized) {
+      await init();
+    }
+
     final details = NotificationDetails(
       android: const AndroidNotificationDetails(_channelId, _channelName, channelDescription: 'Daily reminder to record your video diary', importance: Importance.max, priority: Priority.high, fullScreenIntent: true),
       iOS: const DarwinNotificationDetails(),
       windows: const WindowsNotificationDetails(),
     );
 
-    final now = tz.TZDateTime.now(tz.local);
-    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-    if (scheduled.isBefore(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
+    await _ensureAndroidPermissions();
+
+    // Cancel all existing scheduled notifications first
+    for (int i = 0; i < 7; i++) {
+      await _plugin.cancel(1001 + i);
     }
 
-    await _ensureAndroidPermissions();
-    // Use exact scheduling for precise notification delivery at the specified time
-    // Always use zonedSchedule() instead of deprecated schedule()
-    await _plugin.cancel(1001);
-    try {
-      await _plugin.zonedSchedule(1001, 'Video Diary', 'Don\'t forget to record today\'s video', scheduled, details, androidScheduleMode: AndroidScheduleMode.exact, matchDateTimeComponents: DateTimeComponents.time);
-    } catch (e) {
-      // Fallback to inexact if exact fails (e.g., on systems with exact alarm restrictions)
-      await _plugin.zonedSchedule(1001, 'Video Diary', 'Don\'t forget to record today\'s video', scheduled, details, androidScheduleMode: AndroidScheduleMode.inexact, matchDateTimeComponents: DateTimeComponents.time);
+    final now = tz.TZDateTime.now(tz.local);
+    int scheduledCount = 0;
+
+    // Schedule notifications for the next 7 days
+    for (int i = 0; i < 7; i++) {
+      var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+      scheduled = scheduled.add(Duration(days: i));
+
+      // Only schedule future notifications
+      if (scheduled.isAfter(now)) {
+        try {
+          await _plugin.zonedSchedule(1001 + i, 'Video Diary', 'Don\'t forget to record today\'s video', scheduled, details, androidScheduleMode: AndroidScheduleMode.exact);
+          scheduledCount++;
+        } catch (e) {
+          // Fallback to inexact if exact fails (e.g., on systems with exact alarm restrictions)
+          try {
+            await _plugin.zonedSchedule(1001 + i, 'Video Diary', 'Don\'t forget to record today\'s video', scheduled, details, androidScheduleMode: AndroidScheduleMode.inexact);
+            scheduledCount++;
+          } catch (_) {
+            // Failed to schedule this notification
+          }
+        }
+      }
+    }
+
+    // Log scheduled count for debugging
+    if (scheduledCount > 0) {
+      // Successfully scheduled notifications
+    }
+  }
+
+  /// Reschedule notifications if needed (call on app launch)
+  /// This should be called on every app launch to ensure notifications are always scheduled
+  Future<void> rescheduleIfNeeded(bool enabled, int hour, int minute) async {
+    // Ensure initialization before scheduling
+    if (!_initialized) {
+      await init();
+    }
+
+    if (enabled) {
+      await scheduleWeeklyNotifications(hour, minute);
+    } else {
+      await cancelAll();
     }
   }
 

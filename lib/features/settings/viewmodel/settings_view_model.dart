@@ -42,7 +42,7 @@ class SettingsViewModel extends ChangeNotifier {
     if (_state.reminderEnabled) {
       await _requestNotificationPermission();
       await _notifier.init();
-      await _notifier.scheduleDaily(hour, minute);
+      await _notifier.scheduleWeeklyNotifications(hour, minute);
     }
     notifyListeners();
   }
@@ -59,7 +59,7 @@ class SettingsViewModel extends ChangeNotifier {
 
       // Schedule notification
       await _notifier.init();
-      await _notifier.scheduleDaily(_state.reminderHour, _state.reminderMinute);
+      await _notifier.scheduleWeeklyNotifications(_state.reminderHour, _state.reminderMinute);
     } else {
       // Disable notifications
       await _notifier.cancelAll();

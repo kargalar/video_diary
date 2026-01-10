@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_thumbnail/video_thumbnail.dart' as vt;
 
+import '../../../services/notification_service.dart';
 import '../../../services/storage_service.dart';
 import '../../../services/video_service.dart';
 import '../../settings/data/settings_repository.dart';
@@ -61,6 +62,15 @@ class DiaryViewModel extends ChangeNotifier {
     };
     _dailyMoods = {for (final e in all.entries) e.key: e.value.moods};
     _recomputeStreak();
+
+    // Reschedule notifications on every app launch
+    try {
+      final settings = await _settingsRepo.load();
+      await NotificationService().rescheduleIfNeeded(settings.reminderEnabled, settings.reminderHour, settings.reminderMinute);
+    } catch (e) {
+      debugPrint('Error rescheduling notifications: $e');
+    }
+
     notifyListeners();
   }
 
