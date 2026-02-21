@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:share_plus/share_plus.dart';
+
+import '../../../core/widgets/forced_landscape.dart';
+import '../../../core/widgets/swipe_to_pop.dart';
 
 class PlayerPageArgs {
   final String path;
@@ -24,7 +26,6 @@ class PlayerPage extends StatefulWidget {
 class _PlayerPageState extends State<PlayerPage> {
   VideoPlayerController? _controller;
   bool _isError = false;
-  bool _forcedLandscape = false;
   bool _isSpeedUp = false;
   bool _showControls = true;
   Timer? _hideTimer;
@@ -46,11 +47,6 @@ class _PlayerPageState extends State<PlayerPage> {
       final c = VideoPlayerController.file(file);
       await c.initialize();
       await c.setLooping(false);
-      // Always rotate to landscape for better viewing
-      if (Platform.isAndroid || Platform.isIOS) {
-        await SystemChrome.setPreferredOrientations(const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
-        _forcedLandscape = true;
-      }
       setState(() => _controller = c);
       await c.play();
     } catch (_) {
@@ -76,211 +72,213 @@ class _PlayerPageState extends State<PlayerPage> {
   void dispose() {
     _hideTimer?.cancel();
     _controller?.dispose();
-    if (_forcedLandscape) {
-      // Restore app-wide portrait lock when leaving the player
-      SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final title = widget.args.title ?? 'Video';
-    return Scaffold(
-      appBar: null,
-      backgroundColor: Colors.black,
-      body: _isError
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.warning_rounded, size: 64, color: Colors.red[300]),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Video konumda yok',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Video dosyası silinmiş veya taşınmış olabilir.\nLütfen konumunu kontrol edin.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.arrow_back), label: const Text('Geri Dön')),
-                ],
-              ),
-            )
-          : _controller == null
-          ? const Center(child: CircularProgressIndicator())
-          : GestureDetector(
-              onTap: _showControlsTemporarily,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Center(
-                      child: FittedBox(
-                        fit: BoxFit.cover, // fill screen, preserve aspect ratio
-                        child: SizedBox(width: _controller!.value.size.width, height: _controller!.value.size.height, child: VideoPlayer(_controller!)),
+    return ForcedLandscape(
+      child: SwipeToPop(
+        direction: SwipeDirection.leftToRight,
+        onSwipe: () async {
+          if (!mounted) return;
+          Navigator.of(context).pop();
+        },
+        child: Scaffold(
+          appBar: null,
+          backgroundColor: Colors.black,
+          body: _isError
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.warning_rounded, size: 64, color: Colors.red[300]),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Video konumda yok',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500),
                       ),
-                    ),
-                  ),
-                  // Right half for 2x speed
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: MediaQuery.of(context).size.width * 0.3,
-                    child: GestureDetector(
-                      onLongPressStart: (_) async {
-                        setState(() => _isSpeedUp = true);
-                        await _controller!.setPlaybackSpeed(2.0);
-                      },
-                      onLongPressEnd: (_) async {
-                        setState(() => _isSpeedUp = false);
-                        await _controller!.setPlaybackSpeed(1.0);
-                      },
-                      child: Container(
-                        color: Colors.transparent,
-                        child: _isSpeedUp
-                            ? const Center(
-                                child: Text(
-                                  '2x',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                    shadows: [Shadow(blurRadius: 8, color: Colors.black)],
-                                  ),
-                                ),
-                              )
-                            : null,
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Video dosyası silinmiş veya taşınmış olabilir.\nLütfen konumunu kontrol edin.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
-                    ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.arrow_back), label: const Text('Geri Dön')),
+                    ],
                   ),
-                  // Center controls
-                  AnimatedOpacity(
-                    opacity: _showControls ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // 10 seconds backward
-                          Material(
-                            color: Colors.transparent,
-                            shape: const CircleBorder(),
-                            child: IconButton(
-                              icon: const Icon(Icons.replay_10, color: Colors.white),
-                              iconSize: 40,
-                              onPressed: () async {
-                                final current = _controller!.value.position;
-                                final target = current - const Duration(seconds: 10);
-                                await _controller!.seekTo(target < Duration.zero ? Duration.zero : target);
-                                _showControlsTemporarily();
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 24),
-                          // Play/Pause
-                          Material(
-                            color: Colors.transparent,
-                            shape: const CircleBorder(),
-                            child: IconButton(
-                              icon: Icon(_controller!.value.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
-                              iconSize: 56,
-                              onPressed: () async {
-                                if (_controller!.value.isPlaying) {
-                                  await _controller!.pause();
-                                } else {
-                                  await _controller!.play();
-                                }
-                                setState(() {});
-                                _showControlsTemporarily();
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 24),
-                          // 10 seconds forward
-                          Material(
-                            color: Colors.transparent,
-                            shape: const CircleBorder(),
-                            child: IconButton(
-                              icon: const Icon(Icons.forward_10, color: Colors.white),
-                              iconSize: 40,
-                              onPressed: () async {
-                                final current = _controller!.value.position;
-                                final duration = _controller!.value.duration;
-                                final target = current + const Duration(seconds: 10);
-                                await _controller!.seekTo(target > duration ? duration : target);
-                                _showControlsTemporarily();
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Top bar (back button and title)
-                  Positioned(
-                    left: 8,
-                    right: 8,
-                    top: 8,
-                    child: AnimatedOpacity(
-                      opacity: _showControls ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 200),
-                      child: SafeArea(
-                        bottom: false,
-                        child: Row(
-                          children: [
-                            Material(
-                              color: Colors.black45,
-                              shape: const CircleBorder(),
-                              child: IconButton(
-                                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                                onPressed: () => Navigator.of(context).pop(),
+                )
+              : _controller == null
+              ? const Center(child: CircularProgressIndicator())
+              : GestureDetector(
+                  onTap: _showControlsTemporarily,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Center(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(20.0),
+                              child: FittedBox(
+                                fit: BoxFit.cover, // fill screen, preserve aspect ratio
+                                child: SizedBox(width: _controller!.value.size.width, height: _controller!.value.size.height, child: VideoPlayer(_controller!)),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Colors.white70, fontSize: 16),
-                              ),
-                            ),
-                            Material(
-                              color: Colors.black45,
-                              shape: const CircleBorder(),
-                              child: IconButton(
-                                icon: const Icon(Icons.share, color: Colors.white),
-                                onPressed: () async {
-                                  final file = File(widget.args.path);
-                                  await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], text: title));
-                                },
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
+                      // Right half for 2x speed
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: MediaQuery.of(context).size.width * 0.3,
+                        child: GestureDetector(
+                          onLongPressStart: (_) async {
+                            setState(() => _isSpeedUp = true);
+                            await _controller!.setPlaybackSpeed(2.0);
+                          },
+                          onLongPressEnd: (_) async {
+                            setState(() => _isSpeedUp = false);
+                            await _controller!.setPlaybackSpeed(1.0);
+                          },
+                          child: Container(
+                            color: Colors.transparent,
+                            child: _isSpeedUp
+                                ? const Center(
+                                    child: Text(
+                                      '2x',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.bold,
+                                        shadows: [Shadow(blurRadius: 8, color: Colors.black)],
+                                      ),
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                      // Center controls
+                      AnimatedOpacity(
+                        opacity: _showControls ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // 10 seconds backward
+                              Material(
+                                color: Colors.transparent,
+                                shape: const CircleBorder(),
+                                child: IconButton(
+                                  icon: const Icon(Icons.replay_10, color: Colors.white),
+                                  iconSize: 40,
+                                  onPressed: () async {
+                                    final current = _controller!.value.position;
+                                    final target = current - const Duration(seconds: 10);
+                                    await _controller!.seekTo(target < Duration.zero ? Duration.zero : target);
+                                    _showControlsTemporarily();
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 24),
+                              // Play/Pause
+                              Material(
+                                color: Colors.transparent,
+                                shape: const CircleBorder(),
+                                child: IconButton(
+                                  icon: Icon(_controller!.value.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
+                                  iconSize: 56,
+                                  onPressed: () async {
+                                    if (_controller!.value.isPlaying) {
+                                      await _controller!.pause();
+                                    } else {
+                                      await _controller!.play();
+                                    }
+                                    setState(() {});
+                                    _showControlsTemporarily();
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 24),
+                              // 10 seconds forward
+                              Material(
+                                color: Colors.transparent,
+                                shape: const CircleBorder(),
+                                child: IconButton(
+                                  icon: const Icon(Icons.forward_10, color: Colors.white),
+                                  iconSize: 40,
+                                  onPressed: () async {
+                                    final current = _controller!.value.position;
+                                    final duration = _controller!.value.duration;
+                                    final target = current + const Duration(seconds: 10);
+                                    await _controller!.seekTo(target > duration ? duration : target);
+                                    _showControlsTemporarily();
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Top bar (back button and title)
+                      Positioned(
+                        left: 8,
+                        right: 8,
+                        top: 8,
+                        child: AnimatedOpacity(
+                          opacity: _showControls ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 200),
+                          child: SafeArea(
+                            bottom: false,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: Colors.white70, fontSize: 16),
+                                  ),
+                                ),
+                                Material(
+                                  color: Colors.black45,
+                                  shape: const CircleBorder(),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.share, color: Colors.white),
+                                    onPressed: () async {
+                                      final file = File(widget.args.path);
+                                      await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], text: title));
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Bottom controls
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: AnimatedOpacity(
+                          opacity: _showControls ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 200),
+                          child: _Controls(controller: _controller!, onInteraction: _showControlsTemporarily),
+                        ),
+                      ),
+                    ],
                   ),
-                  // Bottom controls
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: AnimatedOpacity(
-                      opacity: _showControls ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 200),
-                      child: _Controls(controller: _controller!, onInteraction: _showControlsTemporarily),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                ),
+        ),
+      ),
     );
   }
 }
@@ -335,7 +333,7 @@ class _ControlsState extends State<_Controls> {
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         color: Colors.transparent, // transparent overlay over video
         child: Row(
           children: [

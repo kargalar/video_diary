@@ -3,10 +3,10 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/navigation/app_routes.dart';
 import '../viewmodel/settings_view_model.dart';
 import '../../diary/viewmodel/diary_view_model.dart';
 import 'privacy_policy_webview_page.dart';
-import 'debug_page.dart';
 import 'widgets/export_import_dialog.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -96,7 +96,7 @@ class SettingsPage extends StatelessWidget {
               subtitle: const Text('Test notifications and diagnostics', style: TextStyle(fontSize: 12)),
               trailing: const Icon(Icons.chevron_right, size: 20),
               onTap: () {
-                Navigator.of(context).pushNamed(DebugPage.route);
+                AppRoutes.goToDebug(context);
               },
             ),
           if (kDebugMode) const Divider(height: 16, indent: 0, endIndent: 0),

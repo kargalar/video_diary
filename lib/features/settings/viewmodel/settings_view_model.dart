@@ -7,13 +7,15 @@ import '../data/settings_repository.dart';
 import '../model/settings.dart';
 
 class SettingsViewModel extends ChangeNotifier {
-  final SettingsRepository _repo = SettingsRepository();
-  final StorageService _storage = StorageService();
-  final NotificationService _notifier = NotificationService();
+  final SettingsRepository _repo;
+  final NotificationService _notifier;
+  final StorageService _storage = StorageService(); // Keep this simple or inject it too
 
   SettingsModel _state = SettingsModel.def;
   SettingsModel get state => _state;
   SettingsRepository get repo => _repo;
+
+  SettingsViewModel(this._repo, this._notifier);
 
   Future<void> load() async {
     _state = await _repo.load();

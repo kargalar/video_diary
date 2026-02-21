@@ -1,312 +1,158 @@
 import 'dart:io';
 
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
-import 'package:camera/camera.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:video_thumbnail/video_thumbnail.dart' as vt;
 
 import '../../../services/notification_service.dart';
-import '../../../services/storage_service.dart';
-import '../../../services/video_service.dart';
 import '../../settings/data/settings_repository.dart';
 import '../data/diary_repository.dart';
 import '../data/day_data_repository.dart';
 import '../model/diary_entry.dart';
 import '../model/mood.dart';
+import 'diary_state.dart';
 
 class DiaryViewModel extends ChangeNotifier {
-  final DiaryRepository _repo = DiaryRepository();
-  final SettingsRepository _settingsRepo = SettingsRepository();
-  final StorageService _storage = StorageService();
-  final VideoService _video = VideoService();
-  final DayDataRepository _dayRepo = DayDataRepository();
+  final DiaryRepository _repo;
+  final SettingsRepository _settingsRepo;
+  final DayDataRepository _dayRepo;
+  final NotificationService _notificationService;
 
-  static const String _preferredCameraLensKey = 'preferred_camera_lens';
-  CameraLensDirection _preferredLensDirection = CameraLensDirection.front;
-  bool _preferredLensLoaded = false;
+  DiaryState _state = const DiaryState();
+  DiaryState get state => _state;
 
-  List<DiaryEntry> _entries = [];
-  List<DiaryEntry> get entries => _entries;
+  // For backward compatibility during refactoring
+  List<DiaryEntry> get entries => _state.entries;
+  Map<String, int> get dailyRatings => _state.dailyRatings;
+  Map<String, List<String>> get dailyMoods => _state.dailyMoods;
+  int get currentStreak => _state.currentStreak;
+  int get maxStreak => _state.maxStreak;
+  DateTime? get lastRecordedDay => _state.lastRecordedDay;
 
-  // Daily average rating 1..5
-  Map<String, int> _dailyRatings = {};
-  Map<String, int> get dailyRatings => _dailyRatings;
-  // Multiple moods per day
-  Map<String, List<String>> _dailyMoods = {}; // key: yyyy-MM-dd -> list of moods
-  Map<String, List<String>> get dailyMoods => _dailyMoods;
+  DiaryViewModel(this._repo, this._settingsRepo, this._dayRepo, this._notificationService);
 
-  // Streak state
-  int _currentStreak = 0;
-  int _maxStreak = 0;
-  DateTime? _lastRecordedDay; // date-only
-  int get currentStreak => _currentStreak;
-  int get maxStreak => _maxStreak;
-  DateTime? get lastRecordedDay => _lastRecordedDay;
-
-  bool _isRecording = false;
-  bool get isRecording => _isRecording;
-  DateTime? _recordingStartedAt;
-  DateTime? get recordingStartedAt => _recordingStartedAt;
+  void _updateState(DiaryState newState) {
+    _state = newState;
+    notifyListeners();
+  }
 
   Future<void> load() async {
-    _entries = await _repo.load();
-    await _dayRepo.init();
-    // Load existing hive day data
-    final all = await _dayRepo.getAll();
-    _dailyRatings = {
-      for (final e in all.entries)
-        if (e.value.rating != null) e.key: e.value.rating!,
-    };
-    _dailyMoods = {for (final e in all.entries) e.key: e.value.moods};
-    _recomputeStreak();
-
-    // Reschedule notifications on every app launch
+    Future.microtask(() => _updateState(_state.copyWith(status: DiaryStatus.loading)));
     try {
-      final settings = await _settingsRepo.load();
-      await NotificationService().rescheduleIfNeeded(settings.reminderEnabled, settings.reminderHour, settings.reminderMinute);
-    } catch (e) {
-      debugPrint('Error rescheduling notifications: $e');
-    }
+      final entries = await _repo.load();
+      final all = await _dayRepo.getAll();
 
-    notifyListeners();
-  }
+      final dailyRatings = {
+        for (final e in all.entries)
+          if (e.value.rating != null) e.key: e.value.rating!,
+      };
+      final dailyMoods = {for (final e in all.entries) e.key: e.value.moods};
 
-  CameraController? get cameraController => _video.controller;
+      _updateState(_state.copyWith(status: DiaryStatus.success, entries: entries, dailyRatings: dailyRatings, dailyMoods: dailyMoods));
 
-  CameraLensDirection get preferredLensDirection => _preferredLensDirection;
-
-  Future<void> _ensurePreferredLensLoaded() async {
-    if (_preferredLensLoaded) return;
-    final prefs = await SharedPreferences.getInstance();
-    final v = prefs.getString(_preferredCameraLensKey);
-    if (v == 'back') {
-      _preferredLensDirection = CameraLensDirection.back;
-    } else if (v == 'front') {
-      _preferredLensDirection = CameraLensDirection.front;
-    }
-    _preferredLensLoaded = true;
-  }
-
-  Future<void> _savePreferredLens(CameraLensDirection dir) async {
-    final prefs = await SharedPreferences.getInstance();
-    final v = dir == CameraLensDirection.back ? 'back' : 'front';
-    await prefs.setString(_preferredCameraLensKey, v);
-  }
-
-  Future<void> initCamera() async {
-    if (_video.controller != null && _video.controller!.value.isInitialized) return;
-    await _ensurePreferredLensLoaded();
-    final settings = await _settingsRepo.load();
-    await _video.initCamera(landscape: settings.landscape, lensDirection: _preferredLensDirection);
-    notifyListeners();
-  }
-
-  Future<void> toggleCamera() async {
-    if (_isRecording) return;
-    await _ensurePreferredLensLoaded();
-    final settings = await _settingsRepo.load();
-    await _video.switchCamera(landscape: settings.landscape);
-    _preferredLensDirection = _video.lensDirection;
-    await _savePreferredLens(_preferredLensDirection);
-    notifyListeners();
-  }
-
-  // Request camera and microphone permissions and return true if both are granted
-  Future<bool> requestAndCheckPermissions() async {
-    final cameraStatus = await Permission.camera.request();
-    final micStatus = await Permission.microphone.request();
-
-    // Android 13+ (API 33+) requires granular media permissions
-    if (Platform.isAndroid) {
-      final androidInfo = await DeviceInfoPlugin().androidInfo;
-      if (androidInfo.version.sdkInt >= 33) {
-        final videoStatus = await Permission.videos.request();
-        return cameraStatus.isGranted && micStatus.isGranted && videoStatus.isGranted;
-      }
-    }
-
-    return cameraStatus.isGranted && micStatus.isGranted;
-  }
-
-  Future<void> startRecording() async {
-    // Check permissions before starting
-    final hasPermissions = await requestAndCheckPermissions();
-    if (!hasPermissions) {
-      throw Exception('Required permissions not granted. Please grant camera, microphone and storage permissions to record videos.');
-    }
-
-    var settings = await _settingsRepo.load();
-    final base = settings.storageDirectory ?? (await _storage.pickDirectory());
-
-    // If user cancelled location selection or it returned null, throw error
-    if (base == null) {
-      throw Exception('Storage location not selected. Location selection is required to record videos.');
-    }
-
-    if (settings.storageDirectory == null) {
-      // persist chosen dir so it appears immediately in settings
-      settings = settings.copyWith(storageDirectory: base);
-      await _settingsRepo.save(settings);
-    }
-    final dir = await _storage.ensureDiaryFolder(base);
-    final filename = _fileNameFor(DateTime.now());
-    final filePath = '${dir.path}${Platform.pathSeparator}videos${Platform.pathSeparator}$filename';
-
-    if (_video.controller == null || !_video.controller!.value.isInitialized) {
-      await _ensurePreferredLensLoaded();
-      await _video.initCamera(landscape: settings.landscape, lensDirection: _preferredLensDirection);
-    }
-
-    // Try to start recording, and ensure state is set only on success
-    try {
-      await _video.startRecording(filePath);
-      _isRecording = true;
-      _recordingStartedAt = DateTime.now();
-      notifyListeners();
-    } catch (e) {
-      // If startRecording fails, ensure _isRecording stays false
-      _isRecording = false;
-      _recordingStartedAt = null;
-      rethrow;
-    }
-  }
-
-  Future<String?> stopRecording() async {
-    if (!_isRecording) return null;
-    try {
-      var settings = await _settingsRepo.load();
-      final base = settings.storageDirectory ?? (await _storage.pickDirectory());
-
-      // If user cancelled location selection or it returned null, throw error
-      if (base == null) {
-        throw Exception('Storage location not selected. Location selection is required to save videos.');
-      }
-
-      if (settings.storageDirectory == null) {
-        settings = settings.copyWith(storageDirectory: base);
-        await _settingsRepo.save(settings);
-      }
-      final dir = await _storage.ensureDiaryFolder(base);
-      final filename = _fileNameFor(DateTime.now());
-      final filePath = '${dir.path}${Platform.pathSeparator}videos${Platform.pathSeparator}$filename';
-
-      await _video.stopRecordingTo(filePath);
-      final file = File(filePath);
-      final bytes = await file.length();
-
-      // Generate thumbnail in thumbnails folder
-      final thumbDir = '${dir.path}${Platform.pathSeparator}thumbnails';
-      final thumbPath = await vt.VideoThumbnail.thumbnailFile(video: filePath, thumbnailPath: thumbDir, imageFormat: vt.ImageFormat.PNG, maxHeight: 200, quality: 70);
-      // duration is not trivial to fetch without ffprobe; use video_player quick init
-      final durMs = await _probeDurationMs(filePath);
-      final entry = DiaryEntry(path: filePath, date: DateTime.now(), thumbnailPath: thumbPath, durationMs: durMs, fileBytes: bytes);
-      _entries = [entry, ..._entries];
-      await _repo.save(_entries);
       _recomputeStreak();
-      return filePath;
-    } finally {
-      // Always clear recording state, even if an error occurs
-      _isRecording = false;
-      _recordingStartedAt = null;
-      notifyListeners();
+
+      // Reschedule notifications on every app launch
+      final settings = await _settingsRepo.load();
+      await _notificationService.rescheduleIfNeeded(settings.reminderEnabled, settings.reminderHour, settings.reminderMinute);
+    } catch (e) {
+      _updateState(_state.copyWith(status: DiaryStatus.error, errorMessage: e.toString()));
     }
+  }
+
+  void addEntry(DiaryEntry entry) {
+    final newEntries = [entry, ..._state.entries];
+    _updateState(_state.copyWith(entries: newEntries));
+    _repo.save(newEntries);
+    _recomputeStreak();
   }
 
   // Per-entry rating and daily average helpers
   Future<void> setRatingForEntry(String path, int rating) async {
-    final idx = _entries.indexWhere((e) => e.path == path);
+    final idx = _state.entries.indexWhere((e) => e.path == path);
     if (idx == -1) return;
-    final old = _entries[idx];
-    _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: old.description, rating: rating.clamp(1, 5), moods: old.moods);
-    await _repo.save(_entries);
+    final old = _state.entries[idx];
+    final newEntries = List<DiaryEntry>.from(_state.entries);
+    newEntries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: old.description, rating: rating.clamp(1, 5), moods: old.moods);
+
+    _updateState(_state.copyWith(entries: newEntries));
+    await _repo.save(newEntries);
     await _recomputeDailyAverageForDay(old.date);
-    notifyListeners();
   }
 
   Future<void> setDescriptionForEntry(String path, String description) async {
-    final idx = _entries.indexWhere((e) => e.path == path);
+    final idx = _state.entries.indexWhere((e) => e.path == path);
     if (idx == -1) return;
-    final old = _entries[idx];
-    _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: description.isEmpty ? null : description, rating: old.rating, moods: old.moods);
-    await _repo.save(_entries);
-    notifyListeners();
+    final old = _state.entries[idx];
+    final newEntries = List<DiaryEntry>.from(_state.entries);
+    newEntries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: description.isEmpty ? null : description, rating: old.rating, moods: old.moods);
+
+    _updateState(_state.copyWith(entries: newEntries));
+    await _repo.save(newEntries);
   }
 
   Future<void> setMoodsForEntry(String path, List<Mood> moods) async {
-    final idx = _entries.indexWhere((e) => e.path == path);
+    final idx = _state.entries.indexWhere((e) => e.path == path);
     if (idx == -1) return;
-    final old = _entries[idx];
-    _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: old.description, rating: old.rating, moods: moods);
-    await _repo.save(_entries);
+    final old = _state.entries[idx];
+    final newEntries = List<DiaryEntry>.from(_state.entries);
+    newEntries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: old.description, rating: old.rating, moods: moods);
+
+    _updateState(_state.copyWith(entries: newEntries));
+    await _repo.save(newEntries);
     await _recomputeDailyMoodsForDay(old.date);
-    notifyListeners();
   }
 
   Future<void> setDateForEntry(String path, DateTime newDate) async {
-    final idx = _entries.indexWhere((e) => e.path == path);
+    final idx = _state.entries.indexWhere((e) => e.path == path);
     if (idx == -1) return;
-    final old = _entries[idx];
-    _entries[idx] = DiaryEntry(path: old.path, date: newDate, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: old.description, rating: old.rating, moods: old.moods);
-    await _repo.save(_entries);
-    notifyListeners();
+    final old = _state.entries[idx];
+    final newEntries = List<DiaryEntry>.from(_state.entries);
+    newEntries[idx] = DiaryEntry(path: old.path, date: newDate, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: old.description, rating: old.rating, moods: old.moods);
+
+    _updateState(_state.copyWith(entries: newEntries));
+    await _repo.save(newEntries);
   }
 
-  int? getDailyAverageRating(DateTime day) => _dailyRatings[_keyFor(day)];
+  int? getDailyAverageRating(DateTime day) => _state.dailyRatings[_keyFor(day)];
 
   Future<void> clearRatingsForDay(DateTime day) async {
-    // Clear average and also remove per-entry ratings for that day
     final key = _keyFor(day);
     await _dayRepo.clearRating(day);
-    for (var i = 0; i < _entries.length; i++) {
-      final e = _entries[i];
+
+    final newEntries = List<DiaryEntry>.from(_state.entries);
+    for (var i = 0; i < newEntries.length; i++) {
+      final e = newEntries[i];
       if (_keyFor(e.date) == key && e.rating != null) {
-        _entries[i] = DiaryEntry(path: e.path, date: e.date, thumbnailPath: e.thumbnailPath, durationMs: e.durationMs, fileBytes: e.fileBytes, title: e.title, description: e.description, rating: null);
+        newEntries[i] = DiaryEntry(path: e.path, date: e.date, thumbnailPath: e.thumbnailPath, durationMs: e.durationMs, fileBytes: e.fileBytes, title: e.title, description: e.description, rating: null);
       }
     }
-    await _repo.save(_entries);
-    _dailyRatings.remove(key);
-    notifyListeners();
+
+    final newRatings = Map<String, int>.from(_state.dailyRatings)..remove(key);
+
+    _updateState(_state.copyWith(entries: newEntries, dailyRatings: newRatings));
+    await _repo.save(newEntries);
   }
 
   Future<void> setMoodsForDay(DateTime day, List<String> moods) async {
     await _dayRepo.setMoods(day, moods);
-    _dailyMoods = {..._dailyMoods, _keyFor(day): List<String>.from(moods)};
-    notifyListeners();
+    final newMoods = Map<String, List<String>>.from(_state.dailyMoods)..[_keyFor(day)] = List<String>.from(moods);
+    _updateState(_state.copyWith(dailyMoods: newMoods));
   }
 
-  List<String> getMoodsForDay(DateTime day) => _dailyMoods[_keyFor(day)] ?? const [];
+  List<String> getMoodsForDay(DateTime day) => _state.dailyMoods[_keyFor(day)] ?? const [];
 
   Future<void> addMoodsForDay(DateTime day, List<String> moods) async {
     if (moods.isEmpty) return;
     await _dayRepo.addMoods(day, moods);
     final key = _keyFor(day);
-    final merged = {...(_dailyMoods[key] ?? const <String>[]), ...moods}.toList();
-    _dailyMoods = {..._dailyMoods, key: merged};
-    notifyListeners();
-  }
-
-  String _fileNameFor(DateTime date) {
-    final fmt = DateFormat('yyyy-MM-dd_HH-mm-ss');
-    return 'diary_${fmt.format(date)}.mp4';
-  }
-
-  Future<int?> _probeDurationMs(String path) async {
-    try {
-      final player = await _video.createPlayer(path);
-      final ms = player.value.duration.inMilliseconds;
-      await player.dispose();
-      return ms;
-    } catch (_) {
-      return null;
-    }
+    final merged = {...(_state.dailyMoods[key] ?? const <String>[]), ...moods}.toList();
+    final newMoods = Map<String, List<String>>.from(_state.dailyMoods)..[key] = merged;
+    _updateState(_state.copyWith(dailyMoods: newMoods));
   }
 
   Future<void> renameLastRecordingWithTitle(String title) async {
-    if (_entries.isEmpty) return;
-    final latest = _entries.first;
+    if (_state.entries.isEmpty) return;
+    final latest = _state.entries.first;
     final oldFile = File(latest.path);
     if (!await oldFile.exists()) return;
     final dir = oldFile.parent.path;
@@ -317,46 +163,42 @@ class DiaryViewModel extends ChangeNotifier {
     try {
       await oldFile.rename(newPath);
       final updated = DiaryEntry(path: newPath, date: latest.date, thumbnailPath: latest.thumbnailPath, durationMs: latest.durationMs, fileBytes: latest.fileBytes, title: title, description: latest.description, rating: latest.rating);
-      _entries[0] = updated;
-      await _repo.save(_entries);
-      notifyListeners();
+
+      final newEntries = List<DiaryEntry>.from(_state.entries);
+      newEntries[0] = updated;
+      _updateState(_state.copyWith(entries: newEntries));
+      await _repo.save(newEntries);
     } catch (_) {
       // ignore
     }
   }
 
-  Future<void> disposeCamera() async {
-    // Ensure recording state is cleared
-    if (_isRecording) {
-      _isRecording = false;
-      _recordingStartedAt = null;
-      notifyListeners();
-    }
-    await _video.dispose();
-  }
-
   Future<String?> renameByPath(String path, String newTitle) async {
     try {
-      final idx = _entries.indexWhere((e) => e.path == path);
+      final idx = _state.entries.indexWhere((e) => e.path == path);
       if (idx == -1) return null;
-      final old = _entries[idx];
+      final old = _state.entries[idx];
       final oldFile = File(old.path);
+
+      final newEntries = List<DiaryEntry>.from(_state.entries);
+
       if (!await oldFile.exists()) {
-        // File missing; update title only
-        _entries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle, description: old.description, rating: old.rating, moods: old.moods);
-        await _repo.save(_entries);
-        notifyListeners();
+        newEntries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle, description: old.description, rating: old.rating, moods: old.moods);
+        _updateState(_state.copyWith(entries: newEntries));
+        await _repo.save(newEntries);
         return old.path;
       }
+
       final dir = oldFile.parent.path;
       final stamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(old.date);
       final safeTitle = newTitle.replaceAll(RegExp(r'[^\w\- ]+'), '').replaceAll(' ', '_');
       final newName = 'diary_${stamp}_$safeTitle.mp4';
       final newPath = '$dir${Platform.pathSeparator}$newName';
       await oldFile.rename(newPath);
-      _entries[idx] = DiaryEntry(path: newPath, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle, description: old.description, rating: old.rating, moods: old.moods);
-      await _repo.save(_entries);
-      notifyListeners();
+
+      newEntries[idx] = DiaryEntry(path: newPath, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle, description: old.description, rating: old.rating, moods: old.moods);
+      _updateState(_state.copyWith(entries: newEntries));
+      await _repo.save(newEntries);
       return newPath;
     } catch (_) {
       return null;
@@ -365,10 +207,10 @@ class DiaryViewModel extends ChangeNotifier {
 
   Future<bool> deleteByPath(String path) async {
     try {
-      final idx = _entries.indexWhere((e) => e.path == path);
+      final idx = _state.entries.indexWhere((e) => e.path == path);
       if (idx == -1) return false;
-      final e = _entries[idx];
-      // Attempt to delete files
+      final e = _state.entries[idx];
+
       try {
         final f = File(e.path);
         if (await f.exists()) {
@@ -384,11 +226,13 @@ class DiaryViewModel extends ChangeNotifier {
           }
         }
       } catch (_) {}
-      _entries.removeAt(idx);
-      await _repo.save(_entries);
+
+      final newEntries = List<DiaryEntry>.from(_state.entries)..removeAt(idx);
+      _updateState(_state.copyWith(entries: newEntries));
+
+      await _repo.save(newEntries);
       await _recomputeDailyAverageForDay(e.date);
       _recomputeStreak();
-      notifyListeners();
       return true;
     } catch (_) {
       return false;
@@ -397,8 +241,7 @@ class DiaryViewModel extends ChangeNotifier {
 
   Future<bool> clearAll() async {
     try {
-      // Delete all video and thumbnail files
-      for (final e in _entries) {
+      for (final e in _state.entries) {
         try {
           final f = File(e.path);
           if (await f.exists()) {
@@ -415,16 +258,10 @@ class DiaryViewModel extends ChangeNotifier {
           }
         } catch (_) {}
       }
-      // Clear all data
-      _entries = [];
-      _dailyRatings = {};
-      _dailyMoods = {};
-      _currentStreak = 0;
-      _maxStreak = 0;
-      _lastRecordedDay = null;
-      await _repo.save(_entries);
+
+      _updateState(const DiaryState(status: DiaryStatus.success));
+      await _repo.save([]);
       await _dayRepo.clearAll();
-      notifyListeners();
       return true;
     } catch (_) {
       return false;
@@ -432,21 +269,18 @@ class DiaryViewModel extends ChangeNotifier {
   }
 
   void _recomputeStreak() {
-    if (_entries.isEmpty) {
-      _currentStreak = 0;
-      _maxStreak = 0;
-      _lastRecordedDay = null;
+    if (_state.entries.isEmpty) {
+      _updateState(_state.copyWith(currentStreak: 0, maxStreak: 0, lastRecordedDay: null));
       return;
     }
-    // Build unique day set from entries
+
     final uniqueDays = <DateTime>{};
-    for (final e in _entries) {
+    for (final e in _state.entries) {
       uniqueDays.add(_dateOnly(e.date));
     }
-    final days = uniqueDays.toList()..sort((a, b) => b.compareTo(a)); // desc
-    _lastRecordedDay = days.first;
+    final days = uniqueDays.toList()..sort((a, b) => b.compareTo(a));
+    final lastRecordedDay = days.first;
 
-    // Current streak: count consecutive days starting from today or yesterday
     final today = _dateOnly(DateTime.now());
     int cur = 0;
     DateTime? anchor;
@@ -468,20 +302,16 @@ class DiaryViewModel extends ChangeNotifier {
     } else {
       cur = 0;
     }
-    _currentStreak = cur;
 
-    // Max streak across all days
     int best = 0;
     int run = 0;
     DateTime? prev;
     for (final d in days.reversed) {
-      // ascending
       if (prev == null) {
         run = 1;
       } else if (d.difference(prev).inDays == 1) {
         run += 1;
       } else if (d == prev) {
-        // same day won't happen due to uniqueness, but keep for safety
       } else {
         if (run > best) best = run;
         run = 1;
@@ -489,27 +319,32 @@ class DiaryViewModel extends ChangeNotifier {
       prev = d;
     }
     if (run > best) best = run;
-    _maxStreak = best;
+
+    _updateState(_state.copyWith(currentStreak: cur, maxStreak: best, lastRecordedDay: lastRecordedDay));
   }
 
   Future<void> _recomputeDailyAverageForDay(DateTime day) async {
     final key = _keyFor(day);
-    final sameDay = _entries.where((e) => _keyFor(e.date) == key && (e.rating ?? 0) > 0).toList();
+    final sameDay = _state.entries.where((e) => _keyFor(e.date) == key && (e.rating ?? 0) > 0).toList();
+
+    final newRatings = Map<String, int>.from(_state.dailyRatings);
+
     if (sameDay.isEmpty) {
-      _dailyRatings.remove(key);
+      newRatings.remove(key);
       await _dayRepo.clearRating(day);
-      return;
+    } else {
+      final avg = (sameDay.map((e) => e.rating!).reduce((a, b) => a + b) / sameDay.length).round();
+      newRatings[key] = avg;
+      await _dayRepo.setRating(day, avg);
     }
-    final avg = (sameDay.map((e) => e.rating!).reduce((a, b) => a + b) / sameDay.length).round();
-    _dailyRatings[key] = avg;
-    await _dayRepo.setRating(day, avg);
+
+    _updateState(_state.copyWith(dailyRatings: newRatings));
   }
 
   Future<void> _recomputeDailyMoodsForDay(DateTime day) async {
     final key = _keyFor(day);
-    final sameDay = _entries.where((e) => _keyFor(e.date) == key).toList();
+    final sameDay = _state.entries.where((e) => _keyFor(e.date) == key).toList();
 
-    // Collect all moods for this day
     final allMoods = <String>{};
     for (final entry in sameDay) {
       if (entry.moods != null && entry.moods!.isNotEmpty) {
@@ -517,21 +352,25 @@ class DiaryViewModel extends ChangeNotifier {
       }
     }
 
+    final newMoods = Map<String, List<String>>.from(_state.dailyMoods);
+
     if (allMoods.isEmpty) {
-      _dailyMoods.remove(key);
+      newMoods.remove(key);
       await _dayRepo.setMoods(day, []);
     } else {
       final moodList = allMoods.toList();
-      _dailyMoods[key] = moodList;
+      newMoods[key] = moodList;
       await _dayRepo.setMoods(day, moodList);
     }
+
+    _updateState(_state.copyWith(dailyMoods: newMoods));
   }
 
   Future<void> setDailyAverageRating(DateTime day, int rating) async {
     final key = _keyFor(day);
-    _dailyRatings[key] = rating.clamp(1, 5);
+    final newRatings = Map<String, int>.from(_state.dailyRatings)..[key] = rating.clamp(1, 5);
+    _updateState(_state.copyWith(dailyRatings: newRatings));
     await _dayRepo.setRating(day, rating.clamp(1, 5));
-    notifyListeners();
   }
 
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);

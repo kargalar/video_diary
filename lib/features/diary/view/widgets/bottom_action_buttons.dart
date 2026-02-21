@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/navigation/app_routes.dart';
 import '../../viewmodel/diary_view_model.dart';
-import '../../../settings/view/settings_page.dart';
+import '../../viewmodel/record_view_model.dart';
 import '../../../settings/viewmodel/settings_view_model.dart';
-import '../recording_page.dart';
 import 'video_edit_bottom_sheet.dart';
 import '../../../../services/video_review_service.dart';
 
@@ -15,6 +15,7 @@ class BottomActionButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<DiaryViewModel>();
+    final recordVm = context.read<RecordViewModel>();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -38,7 +39,7 @@ class BottomActionButtons extends StatelessWidget {
             heroTag: 'startRecordingFab',
             onPressed: () async {
               // Request permissions first
-              final hasPermissions = await vm.requestAndCheckPermissions();
+              final hasPermissions = await recordVm.requestAndCheckPermissions();
               if (!hasPermissions) {
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -53,7 +54,7 @@ class BottomActionButtons extends StatelessWidget {
               }
 
               // ignore: use_build_context_synchronously
-              final filePath = await Navigator.of(context).pushNamed(RecordingPage.route);
+              final filePath = await AppRoutes.goToRecord(context);
               if (!context.mounted) return;
 
               // If a video was recorded, show the edit bottom sheet
@@ -142,7 +143,7 @@ class BottomActionButtons extends StatelessWidget {
 
                         if (wantNotifications == true && context.mounted) {
                           // Navigate to settings page
-                          Navigator.of(context).pushNamed(SettingsPage.route);
+                          AppRoutes.goToSettings(context);
                         }
                       }
                     }
@@ -175,7 +176,7 @@ class BottomActionButtons extends StatelessWidget {
           // Settings button
           FloatingActionButton(
             heroTag: 'settingsFab',
-            onPressed: () => Navigator.of(context).pushNamed(SettingsPage.route),
+            onPressed: () => AppRoutes.goToSettings(context),
             backgroundColor: Colors.white,
             tooltip: 'Settings',
             child: const Icon(Icons.settings, color: Colors.black87),

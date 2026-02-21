@@ -21,8 +21,11 @@ class _DiaryPageState extends State<DiaryPage> {
   @override
   void initState() {
     super.initState();
-    final vm = context.read<DiaryViewModel>();
-    vm.load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<DiaryViewModel>().load();
+      }
+    });
   }
 
   @override

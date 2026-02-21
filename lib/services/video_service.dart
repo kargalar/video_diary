@@ -94,6 +94,19 @@ class VideoService {
     return controller;
   }
 
+  /// Stops an in-progress recording and deletes the temporary file without saving.
+  Future<void> discardRecording() async {
+    final c = _controller;
+    if (c == null || !c.value.isRecordingVideo) return;
+    try {
+      final xfile = await c.stopVideoRecording();
+      final tmp = File(xfile.path);
+      if (await tmp.exists()) await tmp.delete();
+    } catch (_) {
+      // Best-effort cleanup; ignore errors
+    }
+  }
+
   Future<void> dispose() async {
     await _controller?.dispose();
     _controller = null;
