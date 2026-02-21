@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
+
 import 'package:flutter_slidable/flutter_slidable.dart';
 
 import '../../../../core/navigation/app_routes.dart';
@@ -46,7 +48,7 @@ class VideoGridItem extends StatelessWidget {
         onTap: () {
           // Only allow navigation if video file exists
           if (_videoExists()) {
-            AppRoutes.goToPlayer(context, PlayerPageArgs(path: path, title: title));
+            AppRoutes.goToPlayer(context, PlayerPageArgs(path: path, title: title, lensDirection: entry.lensDirection as String?));
           } else {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ Video file not found. It may have been moved or deleted.'), backgroundColor: Colors.red, duration: Duration(seconds: 2)));
           }
@@ -64,7 +66,13 @@ class VideoGridItem extends StatelessWidget {
                 // Thumbnail - full container
                 Positioned.fill(
                   child: thumb != null && _videoExists()
-                      ? Image.file(File(thumb), fit: BoxFit.cover)
+                      ? (entry.lensDirection == 'front'
+                            ? Transform(
+                                alignment: Alignment.center,
+                                transform: Matrix4.rotationY(math.pi),
+                                child: Image.file(File(thumb), fit: BoxFit.cover),
+                              )
+                            : Image.file(File(thumb), fit: BoxFit.cover))
                       : Container(
                           color: Colors.grey[200],
                           child: !_videoExists()

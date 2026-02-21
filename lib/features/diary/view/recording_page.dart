@@ -46,6 +46,7 @@ class _RecordingPageState extends State<RecordingPage> {
           context.read<DiaryViewModel>().addEntry(entry);
         }
       }
+      await vm.disposeCamera();
       if (!mounted) return;
       // ignore: use_build_context_synchronously
       final nav = Navigator.of(context);
@@ -118,12 +119,11 @@ class _RecordingPageState extends State<RecordingPage> {
 
     return ForcedLandscape(
       child: PopScope(
-        canPop: !vm.state.isRecording,
+        canPop: false,
         onPopInvokedWithResult: (didPop, result) async {
+          if (didPop) return;
           if (_isStopping) return;
-          if (didPop) {
-            // nothing extra needed
-          } else if (vm.state.isRecording) {
+          if (vm.state.isRecording) {
             // If recording, show confirmation dialog
             final shouldDelete = await showDialog<bool>(
               context: context,
@@ -150,8 +150,13 @@ class _RecordingPageState extends State<RecordingPage> {
               await vm.disposeCamera();
               if (!mounted) return;
               // ignore: use_build_context_synchronously
-              Navigator.of(context).pop();
+              Navigator.of(context).pop(result);
             }
+          } else {
+            await vm.disposeCamera();
+            if (!mounted) return;
+            // ignore: use_build_context_synchronously
+            Navigator.of(context).pop(result);
           }
         },
         child: SwipeToPop(

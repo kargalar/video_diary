@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../model/mood.dart';
+import 'mood_chip.dart';
+import 'star_rating_bar.dart';
 
 class VideoEditBottomSheet extends StatefulWidget {
   final String currentTitle;
@@ -38,7 +40,6 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
     _selectedMoods = widget.currentMoods.toSet();
     _selectedDate = widget.currentDate ?? DateTime.now();
 
-    // Auto focus on title field after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _titleFocusNode.requestFocus();
     });
@@ -57,31 +58,46 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
     return {'title': _titleController.text.trim(), 'description': _descriptionController.text.trim(), 'rating': _rating == 0 ? null : _rating, 'moods': _selectedMoods.toList(), if (kDebugMode) 'date': _selectedDate};
   }
 
+  Future<bool> _showDiscardDialog() async {
+    final shouldClose = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2A2A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Discard video?', style: TextStyle(color: Colors.white)),
+        content: Text('If you close without saving, the video will be deleted.', style: TextStyle(color: Colors.grey[400])),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[400])),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    return shouldClose == true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final surfaceColor = isDark ? const Color(0xFF1E1E1E) : theme.scaffoldBackgroundColor;
+    final cardColor = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5);
+    final subtleColor = isDark ? Colors.white.withAlpha(30) : Colors.black.withAlpha(15);
+    final textColor = isDark ? Colors.white : const Color(0xFF2C2C2C);
+    final subtleTextColor = isDark ? Colors.grey[500]! : Colors.grey[400]!;
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
           if (widget.isNewVideo) {
-            // Show warning dialog for new videos
-            final shouldClose = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Discard video?'),
-                content: const Text('If you close without saving, the video will be deleted.'),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
-                    child: const Text('Discard'),
-                  ),
-                ],
-              ),
-            );
-            if (shouldClose == true && context.mounted) {
+            if (await _showDiscardDialog() && context.mounted) {
               Navigator.of(context).pop({'discard': true});
             }
           } else {
@@ -91,214 +107,223 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          color: surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.max,
           children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(widget.isNewVideo ? 'Save Video' : 'Edit Diary', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w500, letterSpacing: 0.5)),
-                  ),
-                  if (widget.isNewVideo)
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () async {
-                        final shouldClose = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Discard video?'),
-                            content: const Text('If you close without saving, the video will be deleted.'),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                child: const Text('Discard'),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (shouldClose == true && context.mounted) {
-                          Navigator.of(context).pop({'discard': true});
-                        }
-                      },
-                    ),
-                ],
-              ),
+            _buildHeader(theme, textColor, subtleTextColor),
+            Expanded(child: _buildContent(theme, isDark, cardColor, subtleColor, textColor, subtleTextColor)),
+            if (widget.isNewVideo) _buildSaveButton(isDark),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme, Color textColor, Color subtleTextColor) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 12, 16, 0),
+      child: Column(
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2)),
             ),
-            const Divider(height: 1),
-            // Content
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title
-                    TextField(
-                      controller: _titleController,
-                      focusNode: _titleFocusNode,
-                      textInputAction: TextInputAction.next,
-                      onSubmitted: (_) {
-                        _descriptionFocusNode.requestFocus();
-                      },
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                      decoration: InputDecoration(
-                        hintText: 'Title',
-                        hintStyle: TextStyle(fontSize: 18, color: Colors.grey[400]),
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    // Description
-                    TextField(
-                      controller: _descriptionController,
-                      focusNode: _descriptionFocusNode,
-                      textInputAction: TextInputAction.done,
-                      maxLines: null,
-                      minLines: 3,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
-                      decoration: InputDecoration(
-                        hintText: 'Description (optional)',
-                        hintStyle: TextStyle(fontSize: 14, color: Colors.grey[400]),
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Debug: Date picker
-                    if (kDebugMode) ...[
-                      GestureDetector(
-                        onTap: () async {
-                          final picked = await showDatePicker(context: context, initialDate: _selectedDate, firstDate: DateTime(2020), lastDate: DateTime.now());
-                          if (picked != null) {
-                            setState(() => _selectedDate = picked);
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey[300]!),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.calendar_today, size: 20, color: Colors.grey[600]),
-                              const SizedBox(width: 12),
-                              Text(DateFormat('MMM dd, yyyy').format(_selectedDate), style: TextStyle(fontSize: 16, color: Colors.grey[800])),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                    // Rating
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ...List.generate(5, (index) {
-                          final starValue = index + 1;
-                          final isSelected = starValue <= _rating;
-                          return GestureDetector(
-                            onTap: () => setState(() => _rating = starValue),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: Icon(isSelected ? Icons.star_rounded : Icons.star_outline_rounded, size: 32, color: isSelected ? Colors.amber[600] : Colors.grey[300]),
-                            ),
-                          );
-                        }),
-                        if (_rating > 0) ...[
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () => setState(() => _rating = 0),
-                            child: Icon(Icons.close, size: 20, color: Colors.grey[500]),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    // Moods
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text('Mood', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500, letterSpacing: 0.3)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: Mood.values.map((mood) {
-                        final isSelected = _selectedMoods.contains(mood);
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              if (isSelected) {
-                                _selectedMoods.remove(mood);
-                              } else {
-                                _selectedMoods.add(mood);
-                              }
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(color: isSelected ? const Color.fromARGB(255, 0, 191, 216) : Colors.grey[100], borderRadius: BorderRadius.circular(20)),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(mood.emoji, style: const TextStyle(fontSize: 18)),
-                                const SizedBox(width: 6),
-                                Text(
-                                  mood.label,
-                                  style: TextStyle(color: isSelected ? const Color(0xFF2C2C2C) : Colors.grey[700], fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400, fontSize: 14),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.isNewVideo ? 'New Entry' : 'Edit Entry',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: textColor, letterSpacing: -0.5),
                 ),
               ),
+              if (widget.isNewVideo)
+                IconButton(
+                  icon: Icon(Icons.close_rounded, color: subtleTextColor, size: 22),
+                  style: IconButton.styleFrom(backgroundColor: Colors.white.withAlpha(8)),
+                  onPressed: () async {
+                    if (await _showDiscardDialog() && mounted) {
+                      Navigator.of(context).pop({'discard': true});
+                    }
+                  },
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent(ThemeData theme, bool isDark, Color cardColor, Color subtleColor, Color textColor, Color subtleTextColor) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title & Description card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: subtleColor),
             ),
-            // Action buttons
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: widget.isNewVideo
-                    ? SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(context, _getResult());
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black87,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: const Text('Save', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _titleController,
+                  focusNode: _titleFocusNode,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => _descriptionFocusNode.requestFocus(),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: textColor, letterSpacing: -0.3),
+                  cursorColor: Colors.white70,
+                  decoration: InputDecoration(
+                    hintText: 'Title',
+                    hintStyle: TextStyle(fontSize: 18, color: subtleTextColor, fontWeight: FontWeight.w400),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                    isDense: true,
+                  ),
+                ),
+                Divider(color: subtleColor, height: 20),
+                TextField(
+                  controller: _descriptionController,
+                  focusNode: _descriptionFocusNode,
+                  textInputAction: TextInputAction.done,
+                  maxLines: null,
+                  minLines: 2,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: textColor.withAlpha(180), height: 1.5),
+                  cursorColor: Colors.white70,
+                  decoration: InputDecoration(
+                    hintText: 'How was your day?',
+                    hintStyle: TextStyle(fontSize: 14, color: subtleTextColor),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                    isDense: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Debug: Date picker
+          if (kDebugMode) ...[_buildDebugDatePicker(isDark, cardColor, subtleColor, textColor, subtleTextColor), const SizedBox(height: 20)],
+
+          // Rating section
+          _buildSectionLabel('Rating', textColor),
+          const SizedBox(height: 10),
+          StarRatingBar(rating: _rating, onRatingChanged: (value) => setState(() => _rating = value)),
+          const SizedBox(height: 24),
+
+          // Mood section
+          _buildSectionLabel('Mood', textColor),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: Mood.values.map((mood) {
+              final isSelected = _selectedMoods.contains(mood);
+              return MoodChip(
+                mood: mood,
+                isSelected: isSelected,
+                onTap: () {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedMoods.remove(mood);
+                    } else {
+                      _selectedMoods.add(mood);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(String label, Color textColor) {
+    return Text(
+      label,
+      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textColor.withAlpha(120), letterSpacing: 1.0),
+    );
+  }
+
+  Widget _buildDebugDatePicker(bool isDark, Color cardColor, Color subtleColor, Color textColor, Color subtleTextColor) {
+    return GestureDetector(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: _selectedDate,
+          firstDate: DateTime(2020),
+          lastDate: DateTime.now(),
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: const ColorScheme.dark(primary: Colors.white, onPrimary: Colors.black, surface: Color(0xFF2A2A2A), onSurface: Colors.white),
+                dialogTheme: DialogThemeData(backgroundColor: const Color(0xFF2A2A2A)),
               ),
+              child: child!,
+            );
+          },
+        );
+        if (picked != null) setState(() => _selectedDate = picked);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: subtleColor),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_today_rounded, size: 18, color: subtleTextColor),
+            const SizedBox(width: 12),
+            Text(
+              DateFormat('MMM dd, yyyy').format(_selectedDate),
+              style: TextStyle(fontSize: 15, color: textColor, fontWeight: FontWeight.w500),
             ),
+            const Spacer(),
+            Icon(Icons.chevron_right_rounded, size: 18, color: subtleTextColor),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSaveButton(bool isDark) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () => Navigator.pop(context, _getResult()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              elevation: 0,
+            ),
+            child: const Text('Save Entry', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.3)),
+          ),
         ),
       ),
     );

@@ -67,12 +67,12 @@ class DiaryViewModel extends ChangeNotifier {
   }
 
   // Per-entry rating and daily average helpers
-  Future<void> setRatingForEntry(String path, int rating) async {
+  Future<void> setRatingForEntry(String path, int? rating) async {
     final idx = _state.entries.indexWhere((e) => e.path == path);
     if (idx == -1) return;
     final old = _state.entries[idx];
     final newEntries = List<DiaryEntry>.from(_state.entries);
-    newEntries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: old.description, rating: rating.clamp(1, 5), moods: old.moods);
+    newEntries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: old.description, rating: rating?.clamp(1, 5), moods: old.moods);
 
     _updateState(_state.copyWith(entries: newEntries));
     await _repo.save(newEntries);

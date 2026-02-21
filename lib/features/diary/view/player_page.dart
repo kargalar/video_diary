@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
@@ -11,7 +12,8 @@ import '../../../core/widgets/swipe_to_pop.dart';
 class PlayerPageArgs {
   final String path;
   final String? title;
-  const PlayerPageArgs({required this.path, this.title});
+  final String? lensDirection;
+  const PlayerPageArgs({required this.path, this.title, this.lensDirection});
 }
 
 class PlayerPage extends StatefulWidget {
@@ -125,7 +127,11 @@ class _PlayerPageState extends State<PlayerPage> {
                               borderRadius: BorderRadius.circular(20.0),
                               child: FittedBox(
                                 fit: BoxFit.cover, // fill screen, preserve aspect ratio
-                                child: SizedBox(width: _controller!.value.size.width, height: _controller!.value.size.height, child: VideoPlayer(_controller!)),
+                                child: SizedBox(
+                                  width: _controller!.value.size.width,
+                                  height: _controller!.value.size.height,
+                                  child: widget.args.lensDirection == 'front' ? Transform(alignment: Alignment.center, transform: Matrix4.rotationY(math.pi), child: VideoPlayer(_controller!)) : VideoPlayer(_controller!),
+                                ),
                               ),
                             ),
                           ),

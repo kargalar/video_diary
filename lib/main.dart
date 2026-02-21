@@ -9,6 +9,6 @@ Future<void> main() async {
   // Ensure services are fully initialized before the app starts
   await sl.setup();
   // Lock the entire app to portrait by default; specific pages can override temporarily
-  SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+  SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
   runApp(const VideoDiaryApp());
 }

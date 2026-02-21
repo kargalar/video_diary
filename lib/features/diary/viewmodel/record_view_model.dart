@@ -159,7 +159,7 @@ class RecordViewModel extends ChangeNotifier {
       final thumbPath = await vt.VideoThumbnail.thumbnailFile(video: filePath, thumbnailPath: thumbDir, imageFormat: vt.ImageFormat.PNG, maxHeight: 200, quality: 70);
 
       final durMs = await _probeDurationMs(filePath);
-      final entry = DiaryEntry(path: filePath, date: DateTime.now(), thumbnailPath: thumbPath, durationMs: durMs, fileBytes: bytes);
+      final entry = DiaryEntry(path: filePath, date: DateTime.now(), thumbnailPath: thumbPath, durationMs: durMs, fileBytes: bytes, lensDirection: _state.preferredLensDirection.name);
 
       _updateState(_state.copyWith(status: RecordStatus.ready, videoPath: null));
       _recordingStartedAt = null;

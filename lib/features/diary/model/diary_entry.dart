@@ -10,10 +10,22 @@ class DiaryEntry {
   final String? description; // video description/notes
   final int? rating; // per-video rating 1..5
   final List<Mood>? moods; // mood tags for this entry
+  final String? lensDirection; // 'front' or 'back'
 
-  DiaryEntry({required this.path, required this.date, this.thumbnailPath, this.durationMs, this.fileBytes, this.title, this.description, this.rating, this.moods});
+  DiaryEntry({required this.path, required this.date, this.thumbnailPath, this.durationMs, this.fileBytes, this.title, this.description, this.rating, this.moods, this.lensDirection});
 
-  Map<String, dynamic> toJson() => {'path': path, 'date': date.toIso8601String(), 'thumbnailPath': thumbnailPath, 'durationMs': durationMs, 'fileBytes': fileBytes, 'title': title, 'description': description, 'rating': rating, 'moods': moods?.map((m) => m.toJson()).toList()};
+  Map<String, dynamic> toJson() => {
+    'path': path,
+    'date': date.toIso8601String(),
+    'thumbnailPath': thumbnailPath,
+    'durationMs': durationMs,
+    'fileBytes': fileBytes,
+    'title': title,
+    'description': description,
+    'rating': rating,
+    'moods': moods?.map((m) => m.toJson()).toList(),
+    'lensDirection': lensDirection,
+  };
 
   factory DiaryEntry.fromJson(Map<String, dynamic> json) => DiaryEntry(
     path: json['path'] as String,
@@ -25,5 +37,6 @@ class DiaryEntry {
     description: json['description'] as String?,
     rating: (json['rating'] as num?)?.toInt(),
     moods: (json['moods'] as List<dynamic>?)?.map((e) => Mood.fromString(e as String)).whereType<Mood>().toList(),
+    lensDirection: json['lensDirection'] as String?,
   );
 }
