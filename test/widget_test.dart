@@ -6,8 +6,6 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:video_diary/core/app.dart';
-import 'package:video_diary/core/di/service_locator.dart';
 
 void main() {
   testWidgets('App builds', (tester) async {

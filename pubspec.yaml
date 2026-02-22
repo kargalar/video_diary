@@ -10,7 +10,7 @@ dependencies:
 
   cupertino_icons: ^1.0.8
   provider: ^6.1.2
-  camera: ^0.11.2
+  camerawesome: ^2.5.0
   video_player: ^2.9.2
   file_selector: ^1.0.3
   flutter_local_notifications: ^19.5.0

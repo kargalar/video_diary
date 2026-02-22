@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 
 import 'package:flutter_slidable/flutter_slidable.dart';
 
@@ -66,13 +65,7 @@ class VideoGridItem extends StatelessWidget {
                 // Thumbnail - full container
                 Positioned.fill(
                   child: thumb != null && _videoExists()
-                      ? (entry.lensDirection == 'front'
-                            ? Transform(
-                                alignment: Alignment.center,
-                                transform: Matrix4.rotationY(math.pi),
-                                child: Image.file(File(thumb), fit: BoxFit.cover),
-                              )
-                            : Image.file(File(thumb), fit: BoxFit.cover))
+                      ? Image.file(File(thumb), fit: BoxFit.cover)
                       : Container(
                           color: Colors.grey[200],
                           child: !_videoExists()

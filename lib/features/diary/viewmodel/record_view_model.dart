@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:camera/camera.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -29,57 +28,24 @@ class RecordViewModel extends ChangeNotifier {
 
   RecordViewModel(this._videoService, this._settingsRepo, this._storageService);
 
-  CameraController? get cameraController => _videoService.controller;
-
   void _updateState(RecordState newState) {
     _state = newState;
     notifyListeners();
   }
 
-  Future<void> _ensurePreferredLensLoaded() async {
+  Future<void> ensurePreferredLensLoaded() async {
     if (_preferredLensLoaded) return;
     final prefs = await SharedPreferences.getInstance();
     final v = prefs.getString(_preferredCameraLensKey);
-    CameraLensDirection dir = CameraLensDirection.front;
-    if (v == 'back') {
-      dir = CameraLensDirection.back;
-    }
+    final dir = (v == 'back') ? 'back' : 'front';
     _updateState(_state.copyWith(preferredLensDirection: dir));
     _preferredLensLoaded = true;
   }
 
-  Future<void> _savePreferredLens(CameraLensDirection dir) async {
+  Future<void> savePreferredLens(String dir) async {
     final prefs = await SharedPreferences.getInstance();
-    final v = dir == CameraLensDirection.back ? 'back' : 'front';
-    await prefs.setString(_preferredCameraLensKey, v);
-  }
-
-  Future<void> initCamera() async {
-    if (_videoService.controller != null && _videoService.controller!.value.isInitialized) return;
-
-    Future.microtask(() => _updateState(_state.copyWith(status: RecordStatus.initializing)));
-    try {
-      await _ensurePreferredLensLoaded();
-      final settings = await _settingsRepo.load();
-      await _videoService.initCamera(landscape: settings.landscape, lensDirection: _state.preferredLensDirection);
-      _updateState(_state.copyWith(status: RecordStatus.ready));
-    } catch (e) {
-      _updateState(_state.copyWith(status: RecordStatus.error, errorMessage: e.toString()));
-    }
-  }
-
-  Future<void> toggleCamera() async {
-    if (_state.isRecording) return;
-    try {
-      await _ensurePreferredLensLoaded();
-      final settings = await _settingsRepo.load();
-      await _videoService.switchCamera(landscape: settings.landscape);
-      final newDirection = _videoService.lensDirection;
-      await _savePreferredLens(newDirection);
-      _updateState(_state.copyWith(preferredLensDirection: newDirection));
-    } catch (e) {
-      _updateState(_state.copyWith(status: RecordStatus.error, errorMessage: e.toString()));
-    }
+    await prefs.setString(_preferredCameraLensKey, dir);
+    _updateState(_state.copyWith(preferredLensDirection: dir));
   }
 
   Future<bool> requestAndCheckPermissions() async {
@@ -97,11 +63,12 @@ class RecordViewModel extends ChangeNotifier {
     return cameraStatus.isGranted && micStatus.isGranted;
   }
 
-  Future<void> startRecording() async {
+  /// Prepares the file path for recording and updates state to recording.
+  Future<String?> prepareRecording() async {
     final hasPermissions = await requestAndCheckPermissions();
     if (!hasPermissions) {
       _updateState(_state.copyWith(hasPermission: false, errorMessage: 'Required permissions not granted.'));
-      return;
+      return null;
     }
 
     var settings = await _settingsRepo.load();
@@ -109,7 +76,7 @@ class RecordViewModel extends ChangeNotifier {
 
     if (base == null) {
       _updateState(_state.copyWith(errorMessage: 'Storage location not selected.'));
-      return;
+      return null;
     }
 
     if (settings.storageDirectory == null) {
@@ -121,24 +88,16 @@ class RecordViewModel extends ChangeNotifier {
     final filename = _fileNameFor(DateTime.now());
     final filePath = '${dir.path}${Platform.pathSeparator}videos${Platform.pathSeparator}$filename';
 
-    if (_videoService.controller == null || !_videoService.controller!.value.isInitialized) {
-      await _ensurePreferredLensLoaded();
-      await _videoService.initCamera(landscape: settings.landscape, lensDirection: _state.preferredLensDirection);
-    }
+    // Ensure directory exists
+    await Directory('${dir.path}${Platform.pathSeparator}videos').create(recursive: true);
 
-    try {
-      await _videoService.startRecording(filePath);
-      _recordingStartedAt = DateTime.now();
-      _updateState(_state.copyWith(status: RecordStatus.recording, videoPath: filePath));
-    } catch (e) {
-      _recordingStartedAt = null;
-      _updateState(_state.copyWith(status: RecordStatus.error, errorMessage: e.toString()));
-    }
+    _recordingStartedAt = DateTime.now();
+    _updateState(_state.copyWith(status: RecordStatus.recording, videoPath: filePath));
+    return filePath;
   }
 
-  Future<DiaryEntry?> stopRecording() async {
-    if (!_state.isRecording) return null;
-
+  /// Called when CamerAwesome finishes recording and provides the saved file path.
+  Future<DiaryEntry?> onVideoSaved(String savedFilePath) async {
     _updateState(_state.copyWith(status: RecordStatus.saving));
     try {
       var settings = await _settingsRepo.load();
@@ -149,17 +108,21 @@ class RecordViewModel extends ChangeNotifier {
       }
 
       final dir = await _storageService.ensureDiaryFolder(base);
-      final filePath = _state.videoPath!;
+      final targetPath = _state.videoPath!;
 
-      await _videoService.stopRecordingTo(filePath);
-      final file = File(filePath);
+      // Move file from CamerAwesome output to our target path
+      if (savedFilePath != targetPath) {
+        await _videoService.moveVideoFile(savedFilePath, targetPath);
+      }
+
+      final file = File(targetPath);
       final bytes = await file.length();
 
       final thumbDir = '${dir.path}${Platform.pathSeparator}thumbnails';
-      final thumbPath = await vt.VideoThumbnail.thumbnailFile(video: filePath, thumbnailPath: thumbDir, imageFormat: vt.ImageFormat.PNG, maxHeight: 200, quality: 70);
+      final thumbPath = await vt.VideoThumbnail.thumbnailFile(video: targetPath, thumbnailPath: thumbDir, imageFormat: vt.ImageFormat.PNG, maxHeight: 200, quality: 70);
 
-      final durMs = await _probeDurationMs(filePath);
-      final entry = DiaryEntry(path: filePath, date: DateTime.now(), thumbnailPath: thumbPath, durationMs: durMs, fileBytes: bytes, lensDirection: _state.preferredLensDirection.name);
+      final durMs = await _probeDurationMs(targetPath);
+      final entry = DiaryEntry(path: targetPath, date: DateTime.now(), thumbnailPath: thumbPath, durationMs: durMs, fileBytes: bytes, lensDirection: _state.preferredLensDirection);
 
       _updateState(_state.copyWith(status: RecordStatus.ready, videoPath: null));
       _recordingStartedAt = null;
@@ -169,6 +132,16 @@ class RecordViewModel extends ChangeNotifier {
       _recordingStartedAt = null;
       return null;
     }
+  }
+
+  void setRecordingStarted() {
+    _recordingStartedAt = DateTime.now();
+    _updateState(_state.copyWith(status: RecordStatus.recording));
+  }
+
+  void setReady() {
+    _recordingStartedAt = null;
+    _updateState(_state.copyWith(status: RecordStatus.ready, videoPath: null));
   }
 
   String _fileNameFor(DateTime date) {
@@ -185,31 +158,5 @@ class RecordViewModel extends ChangeNotifier {
     } catch (_) {
       return null;
     }
-  }
-
-  /// Stops the active recording, deletes the temp file, and clears recording state.
-  Future<void> discardRecording() async {
-    if (!_state.isRecording) return;
-    await _videoService.discardRecording();
-    _recordingStartedAt = null;
-    _updateState(_state.copyWith(status: RecordStatus.ready, videoPath: null));
-  }
-
-  Future<void> disposeCamera() async {
-    // Stop any active recording before disposing so the temp file is cleaned up
-    // and the state is cleared before the camera controller is released.
-    if (_state.isRecording) {
-      await _videoService.discardRecording();
-      _recordingStartedAt = null;
-      _updateState(_state.copyWith(status: RecordStatus.ready, videoPath: null));
-    }
-    await _videoService.dispose();
-    _updateState(const RecordState());
-  }
-
-  @override
-  void dispose() {
-    _videoService.dispose();
-    super.dispose();
   }
 }
