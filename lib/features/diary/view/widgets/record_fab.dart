@@ -130,20 +130,24 @@ class RecordFab extends StatelessWidget {
         }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFFFF512F), Color(0xFFDD2476)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: const [BoxShadow(color: Color(0x66DD2476), blurRadius: 16, offset: Offset(0, 6))],
+          color: Theme.of(context).colorScheme.primary,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.08)),
+          boxShadow: [
+            BoxShadow(color: Theme.of(context).colorScheme.primary.withOpacity(0.2), blurRadius: 16, offset: const Offset(0, 6)),
+            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 4, offset: const Offset(0, 2)),
+          ],
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.video_call, color: Colors.white, size: 22),
-            SizedBox(width: 10),
+            Icon(Icons.videocam_rounded, color: Theme.of(context).colorScheme.onPrimary, size: 22),
+            const SizedBox(width: 8),
             Text(
               'Record',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5),
+              style: TextStyle(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w600, fontSize: 15, letterSpacing: 0.3),
             ),
           ],
         ),
