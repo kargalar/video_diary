@@ -111,7 +111,7 @@ class _RecordingPageState extends State<RecordingPage> {
 
   Widget _buildCameraPreview(RecordViewModel vm) {
     return CameraAwesomeBuilder.custom(
-      previewFit: CameraPreviewFit.contain,
+      previewFit: CameraPreviewFit.cover,
       saveConfig: SaveConfig.video(mirrorFrontCamera: true, videoOptions: VideoOptions(enableAudio: true, quality: VideoRecordingQuality.fhd)),
       sensorConfig: SensorConfig.single(sensor: vm.state.isFrontCamera ? Sensor.position(SensorPosition.front) : Sensor.position(SensorPosition.back), aspectRatio: CameraAspectRatios.ratio_16_9),
       onMediaCaptureEvent: (event) {
