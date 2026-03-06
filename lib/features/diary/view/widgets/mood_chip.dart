@@ -6,8 +6,9 @@ class MoodChip extends StatelessWidget {
   final Mood mood;
   final bool isSelected;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
-  const MoodChip({super.key, required this.mood, required this.isSelected, required this.onTap});
+  const MoodChip({super.key, required this.mood, required this.isSelected, required this.onTap, this.onLongPress});
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +23,7 @@ class MoodChip extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,

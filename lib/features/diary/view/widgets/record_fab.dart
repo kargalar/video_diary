@@ -134,10 +134,10 @@ class RecordFab extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.primary,
           borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.08)),
+          border: Border.all(color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.08)),
           boxShadow: [
-            BoxShadow(color: Theme.of(context).colorScheme.primary.withOpacity(0.2), blurRadius: 16, offset: const Offset(0, 6)),
-            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 4, offset: const Offset(0, 2)),
+            BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2), blurRadius: 16, offset: const Offset(0, 6)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4, offset: const Offset(0, 2)),
           ],
         ),
         child: Row(

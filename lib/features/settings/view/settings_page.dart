@@ -8,6 +8,7 @@ import '../../../core/navigation/app_routes.dart';
 import '../viewmodel/settings_view_model.dart';
 import '../../diary/viewmodel/diary_view_model.dart';
 import 'privacy_policy_webview_page.dart';
+import 'widgets/mood_management_bottom_sheet.dart';
 import 'widgets/export_import_dialog.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -27,8 +28,8 @@ class SettingsPage extends StatelessWidget {
   Widget _buildSection(BuildContext context, List<Widget> children) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final sectionColor = isDark ? const Color(0xFF242424) : Colors.white;
-    final borderColor = isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05);
-    final shadowColor = isDark ? Colors.black.withOpacity(0.2) : Colors.black.withOpacity(0.02);
+    final borderColor = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05);
+    final shadowColor = isDark ? Colors.black.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.02);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -66,9 +67,9 @@ class SettingsPage extends StatelessWidget {
       leading: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: iconColor.withOpacity(isDark ? 0.15 : 0.1),
+          color: iconColor.withValues(alpha: isDark ? 0.15 : 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: iconColor.withOpacity(isDark ? 0.3 : 0.2), width: 1),
+          border: Border.all(color: iconColor.withValues(alpha: isDark ? 0.3 : 0.2), width: 1),
         ),
         child: Icon(icon, color: iconColor, size: 22),
       ),
@@ -177,6 +178,16 @@ class SettingsPage extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+            _buildTile(
+              context: context,
+              icon: Icons.emoji_emotions_rounded,
+              iconColor: Colors.tealAccent,
+              title: 'Mood Library',
+              subtitle: '${diaryVm.availableMoods.length} moods available',
+              onTap: () {
+                showModalBottomSheet<void>(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (context) => const MoodManagementBottomSheet());
+              },
             ),
           ]),
 

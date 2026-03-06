@@ -7,14 +7,18 @@ import '../../../services/notification_service.dart';
 import '../../settings/data/settings_repository.dart';
 import '../data/diary_repository.dart';
 import '../data/day_data_repository.dart';
+import '../data/mood_repository.dart';
 import '../model/diary_entry.dart';
 import '../model/mood.dart';
 import 'diary_state.dart';
 
 class DiaryViewModel extends ChangeNotifier {
+  static const _sentinel = Object();
+
   final DiaryRepository _repo;
   final SettingsRepository _settingsRepo;
   final DayDataRepository _dayRepo;
+  final MoodRepository _moodRepo;
   final NotificationService _notificationService;
 
   DiaryState _state = const DiaryState();
@@ -22,13 +26,14 @@ class DiaryViewModel extends ChangeNotifier {
 
   // For backward compatibility during refactoring
   List<DiaryEntry> get entries => _state.entries;
+  List<Mood> get availableMoods => _state.availableMoods;
   Map<String, int> get dailyRatings => _state.dailyRatings;
-  Map<String, List<String>> get dailyMoods => _state.dailyMoods;
+  Map<String, List<Mood>> get dailyMoods => _state.dailyMoods;
   int get currentStreak => _state.currentStreak;
   int get maxStreak => _state.maxStreak;
   DateTime? get lastRecordedDay => _state.lastRecordedDay;
 
-  DiaryViewModel(this._repo, this._settingsRepo, this._dayRepo, this._notificationService);
+  DiaryViewModel(this._repo, this._settingsRepo, this._dayRepo, this._moodRepo, this._notificationService);
 
   void _updateState(DiaryState newState) {
     _state = newState;
@@ -38,16 +43,23 @@ class DiaryViewModel extends ChangeNotifier {
   Future<void> load() async {
     Future.microtask(() => _updateState(_state.copyWith(status: DiaryStatus.loading)));
     try {
-      final entries = await _repo.load();
+      var moods = await _moodRepo.load();
+      final rawEntries = await _repo.load();
       final all = await _dayRepo.getAll();
+
+      moods = _mergeCatalogWithDiscoveredMoods(moods, rawEntries, all.values);
+      final entries = rawEntries.map((entry) => _syncEntryMoods(entry, moods)).toList();
 
       final dailyRatings = {
         for (final e in all.entries)
           if (e.value.rating != null) e.key: e.value.rating!,
       };
-      final dailyMoods = {for (final e in all.entries) e.key: e.value.moods};
+      final dailyMoods = {for (final e in all.entries) e.key: _syncMoodList(e.value.moods, moods)};
 
-      _updateState(_state.copyWith(status: DiaryStatus.success, entries: entries, dailyRatings: dailyRatings, dailyMoods: dailyMoods));
+      _updateState(_state.copyWith(status: DiaryStatus.success, entries: entries, availableMoods: moods, dailyRatings: dailyRatings, dailyMoods: dailyMoods));
+
+      await _moodRepo.save(moods);
+      await _repo.save(entries);
 
       _recomputeStreak();
 
@@ -60,10 +72,58 @@ class DiaryViewModel extends ChangeNotifier {
   }
 
   void addEntry(DiaryEntry entry) {
-    final newEntries = [entry, ..._state.entries];
+    final normalized = _syncEntryMoods(entry, _state.availableMoods);
+    final newEntries = [normalized, ..._state.entries];
     _updateState(_state.copyWith(entries: newEntries));
     _repo.save(newEntries);
+    _recomputeDailyAverageForDay(normalized.date);
+    _recomputeDailyMoodsForDay(normalized.date);
     _recomputeStreak();
+  }
+
+  Future<bool> addMood({required String emoji, required String label}) async {
+    final normalizedLabel = label.trim();
+    final normalizedEmoji = emoji.trim().isEmpty ? '🙂' : emoji.trim();
+    if (normalizedLabel.isEmpty) return false;
+
+    final newMood = Mood(id: Mood.createUniqueId(normalizedLabel, _state.availableMoods), emoji: normalizedEmoji, label: normalizedLabel);
+
+    final updatedMoods = [..._state.availableMoods, newMood];
+    _updateState(_state.copyWith(availableMoods: updatedMoods));
+    await _moodRepo.save(updatedMoods);
+    return true;
+  }
+
+  Future<bool> updateMood({required Mood original, required String emoji, required String label}) async {
+    final normalizedLabel = label.trim();
+    final normalizedEmoji = emoji.trim().isEmpty ? '🙂' : emoji.trim();
+    if (normalizedLabel.isEmpty) return false;
+
+    final updatedMood = original.copyWith(emoji: normalizedEmoji, label: normalizedLabel);
+    final updatedCatalog = _state.availableMoods.map((mood) => mood.id == original.id ? updatedMood : mood).toList();
+    final updatedEntries = _state.entries.map((entry) => _replaceMoodInEntry(entry, updatedMood)).toList();
+    final updatedDailyMoods = _replaceMoodInDailyMap(_state.dailyMoods, updatedMood);
+
+    _updateState(_state.copyWith(entries: updatedEntries, availableMoods: updatedCatalog, dailyMoods: updatedDailyMoods));
+    await _moodRepo.save(updatedCatalog);
+    await _repo.save(updatedEntries);
+    await _persistDailyMoodKeys(updatedDailyMoods.keys, updatedDailyMoods);
+    return true;
+  }
+
+  Future<bool> deleteMood(String moodId) async {
+    if (!_state.availableMoods.any((mood) => mood.id == moodId)) return false;
+
+    final updatedCatalog = _state.availableMoods.where((mood) => mood.id != moodId).toList();
+    final updatedEntries = _state.entries.map((entry) => _removeMoodFromEntry(entry, moodId)).toList();
+    final affectedKeys = _state.dailyMoods.entries.where((entry) => entry.value.any((mood) => mood.id == moodId)).map((entry) => entry.key).toSet();
+    final updatedDailyMoods = _removeMoodFromDailyMap(_state.dailyMoods, moodId);
+
+    _updateState(_state.copyWith(entries: updatedEntries, availableMoods: updatedCatalog, dailyMoods: updatedDailyMoods));
+    await _moodRepo.save(updatedCatalog);
+    await _repo.save(updatedEntries);
+    await _persistDailyMoodKeys(affectedKeys, updatedDailyMoods);
+    return true;
   }
 
   // Per-entry rating and daily average helpers
@@ -72,7 +132,7 @@ class DiaryViewModel extends ChangeNotifier {
     if (idx == -1) return;
     final old = _state.entries[idx];
     final newEntries = List<DiaryEntry>.from(_state.entries);
-    newEntries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: old.description, rating: rating?.clamp(1, 5), moods: old.moods);
+    newEntries[idx] = _copyEntry(old, rating: rating?.clamp(1, 5));
 
     _updateState(_state.copyWith(entries: newEntries));
     await _repo.save(newEntries);
@@ -84,7 +144,7 @@ class DiaryViewModel extends ChangeNotifier {
     if (idx == -1) return;
     final old = _state.entries[idx];
     final newEntries = List<DiaryEntry>.from(_state.entries);
-    newEntries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: description.isEmpty ? null : description, rating: old.rating, moods: old.moods);
+    newEntries[idx] = _copyEntry(old, description: description.isEmpty ? null : description);
 
     _updateState(_state.copyWith(entries: newEntries));
     await _repo.save(newEntries);
@@ -95,7 +155,7 @@ class DiaryViewModel extends ChangeNotifier {
     if (idx == -1) return;
     final old = _state.entries[idx];
     final newEntries = List<DiaryEntry>.from(_state.entries);
-    newEntries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: old.description, rating: old.rating, moods: moods);
+    newEntries[idx] = _copyEntry(old, moods: _syncMoodList(moods, _state.availableMoods));
 
     _updateState(_state.copyWith(entries: newEntries));
     await _repo.save(newEntries);
@@ -107,10 +167,15 @@ class DiaryViewModel extends ChangeNotifier {
     if (idx == -1) return;
     final old = _state.entries[idx];
     final newEntries = List<DiaryEntry>.from(_state.entries);
-    newEntries[idx] = DiaryEntry(path: old.path, date: newDate, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: old.title, description: old.description, rating: old.rating, moods: old.moods);
+    newEntries[idx] = _copyEntry(old, date: newDate);
 
     _updateState(_state.copyWith(entries: newEntries));
     await _repo.save(newEntries);
+    await _recomputeDailyAverageForDay(old.date);
+    await _recomputeDailyAverageForDay(newDate);
+    await _recomputeDailyMoodsForDay(old.date);
+    await _recomputeDailyMoodsForDay(newDate);
+    _recomputeStreak();
   }
 
   int? getDailyAverageRating(DateTime day) => _state.dailyRatings[_keyFor(day)];
@@ -123,7 +188,7 @@ class DiaryViewModel extends ChangeNotifier {
     for (var i = 0; i < newEntries.length; i++) {
       final e = newEntries[i];
       if (_keyFor(e.date) == key && e.rating != null) {
-        newEntries[i] = DiaryEntry(path: e.path, date: e.date, thumbnailPath: e.thumbnailPath, durationMs: e.durationMs, fileBytes: e.fileBytes, title: e.title, description: e.description, rating: null);
+        newEntries[i] = _copyEntry(e, rating: null);
       }
     }
 
@@ -133,20 +198,24 @@ class DiaryViewModel extends ChangeNotifier {
     await _repo.save(newEntries);
   }
 
-  Future<void> setMoodsForDay(DateTime day, List<String> moods) async {
+  Future<void> setMoodsForDay(DateTime day, List<Mood> moods) async {
     await _dayRepo.setMoods(day, moods);
-    final newMoods = Map<String, List<String>>.from(_state.dailyMoods)..[_keyFor(day)] = List<String>.from(moods);
+    final newMoods = Map<String, List<Mood>>.from(_state.dailyMoods)..[_keyFor(day)] = List<Mood>.from(moods);
     _updateState(_state.copyWith(dailyMoods: newMoods));
   }
 
-  List<String> getMoodsForDay(DateTime day) => _state.dailyMoods[_keyFor(day)] ?? const [];
+  List<Mood> getMoodsForDay(DateTime day) => _state.dailyMoods[_keyFor(day)] ?? const [];
 
-  Future<void> addMoodsForDay(DateTime day, List<String> moods) async {
+  Future<void> addMoodsForDay(DateTime day, List<Mood> moods) async {
     if (moods.isEmpty) return;
     await _dayRepo.addMoods(day, moods);
     final key = _keyFor(day);
-    final merged = {...(_state.dailyMoods[key] ?? const <String>[]), ...moods}.toList();
-    final newMoods = Map<String, List<String>>.from(_state.dailyMoods)..[key] = merged;
+    final merged = [
+      ...(_state.dailyMoods[key] ?? const <Mood>[]),
+      for (final mood in moods)
+        if (!(_state.dailyMoods[key] ?? const <Mood>[]).any((existingMood) => existingMood.id == mood.id)) mood,
+    ];
+    final newMoods = Map<String, List<Mood>>.from(_state.dailyMoods)..[key] = merged;
     _updateState(_state.copyWith(dailyMoods: newMoods));
   }
 
@@ -162,7 +231,7 @@ class DiaryViewModel extends ChangeNotifier {
     final newPath = '$dir${Platform.pathSeparator}$newName';
     try {
       await oldFile.rename(newPath);
-      final updated = DiaryEntry(path: newPath, date: latest.date, thumbnailPath: latest.thumbnailPath, durationMs: latest.durationMs, fileBytes: latest.fileBytes, title: title, description: latest.description, rating: latest.rating);
+      final updated = _copyEntry(latest, path: newPath, title: title);
 
       final newEntries = List<DiaryEntry>.from(_state.entries);
       newEntries[0] = updated;
@@ -183,7 +252,7 @@ class DiaryViewModel extends ChangeNotifier {
       final newEntries = List<DiaryEntry>.from(_state.entries);
 
       if (!await oldFile.exists()) {
-        newEntries[idx] = DiaryEntry(path: old.path, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle, description: old.description, rating: old.rating, moods: old.moods);
+        newEntries[idx] = _copyEntry(old, title: newTitle);
         _updateState(_state.copyWith(entries: newEntries));
         await _repo.save(newEntries);
         return old.path;
@@ -196,7 +265,7 @@ class DiaryViewModel extends ChangeNotifier {
       final newPath = '$dir${Platform.pathSeparator}$newName';
       await oldFile.rename(newPath);
 
-      newEntries[idx] = DiaryEntry(path: newPath, date: old.date, thumbnailPath: old.thumbnailPath, durationMs: old.durationMs, fileBytes: old.fileBytes, title: newTitle, description: old.description, rating: old.rating, moods: old.moods);
+      newEntries[idx] = _copyEntry(old, path: newPath, title: newTitle);
       _updateState(_state.copyWith(entries: newEntries));
       await _repo.save(newEntries);
       return newPath;
@@ -232,6 +301,7 @@ class DiaryViewModel extends ChangeNotifier {
 
       await _repo.save(newEntries);
       await _recomputeDailyAverageForDay(e.date);
+      await _recomputeDailyMoodsForDay(e.date);
       _recomputeStreak();
       return true;
     } catch (_) {
@@ -259,7 +329,7 @@ class DiaryViewModel extends ChangeNotifier {
         } catch (_) {}
       }
 
-      _updateState(const DiaryState(status: DiaryStatus.success));
+      _updateState(_state.copyWith(status: DiaryStatus.success, entries: const [], dailyRatings: const {}, dailyMoods: const {}, currentStreak: 0, maxStreak: 0, lastRecordedDay: null));
       await _repo.save([]);
       await _dayRepo.clearAll();
       return true;
@@ -345,20 +415,22 @@ class DiaryViewModel extends ChangeNotifier {
     final key = _keyFor(day);
     final sameDay = _state.entries.where((e) => _keyFor(e.date) == key).toList();
 
-    final allMoods = <String>{};
+    final allMoods = <String, Mood>{};
     for (final entry in sameDay) {
       if (entry.moods != null && entry.moods!.isNotEmpty) {
-        allMoods.addAll(entry.moods!.map((m) => m.name));
+        for (final mood in entry.moods!) {
+          allMoods[mood.id] = mood;
+        }
       }
     }
 
-    final newMoods = Map<String, List<String>>.from(_state.dailyMoods);
+    final newMoods = Map<String, List<Mood>>.from(_state.dailyMoods);
 
     if (allMoods.isEmpty) {
       newMoods.remove(key);
       await _dayRepo.setMoods(day, []);
     } else {
-      final moodList = allMoods.toList();
+      final moodList = allMoods.values.toList();
       newMoods[key] = moodList;
       await _dayRepo.setMoods(day, moodList);
     }
@@ -371,6 +443,100 @@ class DiaryViewModel extends ChangeNotifier {
     final newRatings = Map<String, int>.from(_state.dailyRatings)..[key] = rating.clamp(1, 5);
     _updateState(_state.copyWith(dailyRatings: newRatings));
     await _dayRepo.setRating(day, rating.clamp(1, 5));
+  }
+
+  DiaryEntry _copyEntry(DiaryEntry entry, {String? path, DateTime? date, Object? thumbnailPath = _sentinel, int? durationMs, int? fileBytes, Object? title = _sentinel, Object? description = _sentinel, Object? rating = _sentinel, Object? moods = _sentinel, Object? lensDirection = _sentinel}) {
+    return DiaryEntry(
+      path: path ?? entry.path,
+      date: date ?? entry.date,
+      thumbnailPath: identical(thumbnailPath, _sentinel) ? entry.thumbnailPath : thumbnailPath as String?,
+      durationMs: durationMs ?? entry.durationMs,
+      fileBytes: fileBytes ?? entry.fileBytes,
+      title: identical(title, _sentinel) ? entry.title : title as String?,
+      description: identical(description, _sentinel) ? entry.description : description as String?,
+      rating: identical(rating, _sentinel) ? entry.rating : rating as int?,
+      moods: identical(moods, _sentinel) ? entry.moods : moods as List<Mood>?,
+      lensDirection: identical(lensDirection, _sentinel) ? entry.lensDirection : lensDirection as String?,
+    );
+  }
+
+  List<Mood> _mergeCatalogWithDiscoveredMoods(List<Mood> catalog, List<DiaryEntry> entries, Iterable<DayData> dayData) {
+    final merged = <Mood>[...catalog];
+
+    void addIfMissing(Mood mood) {
+      if (!merged.any((existing) => existing.id == mood.id)) {
+        merged.add(mood);
+      }
+    }
+
+    for (final entry in entries) {
+      for (final mood in entry.moods ?? const <Mood>[]) {
+        addIfMissing(mood);
+      }
+    }
+
+    for (final data in dayData) {
+      for (final mood in data.moods) {
+        addIfMissing(mood);
+      }
+    }
+
+    return merged;
+  }
+
+  DiaryEntry _syncEntryMoods(DiaryEntry entry, List<Mood> catalog) {
+    return _copyEntry(entry, moods: _syncMoodList(entry.moods ?? const [], catalog));
+  }
+
+  List<Mood> _syncMoodList(List<Mood> moods, List<Mood> catalog) {
+    final byId = {for (final mood in catalog) mood.id: mood};
+    final synced = <Mood>[];
+    for (final mood in moods) {
+      final resolved = byId[mood.id] ?? mood;
+      if (!synced.any((existing) => existing.id == resolved.id)) {
+        synced.add(resolved);
+      }
+    }
+    return synced;
+  }
+
+  DiaryEntry _replaceMoodInEntry(DiaryEntry entry, Mood updatedMood) {
+    if (entry.moods == null || entry.moods!.isEmpty) return entry;
+    final updatedMoods = entry.moods!.map((mood) => mood.id == updatedMood.id ? updatedMood : mood).toList();
+    return _copyEntry(entry, moods: updatedMoods);
+  }
+
+  DiaryEntry _removeMoodFromEntry(DiaryEntry entry, String moodId) {
+    if (entry.moods == null || entry.moods!.isEmpty) return entry;
+    final updatedMoods = entry.moods!.where((mood) => mood.id != moodId).toList();
+    return _copyEntry(entry, moods: updatedMoods);
+  }
+
+  Map<String, List<Mood>> _replaceMoodInDailyMap(Map<String, List<Mood>> source, Mood updatedMood) {
+    return {for (final entry in source.entries) entry.key: entry.value.map((mood) => mood.id == updatedMood.id ? updatedMood : mood).toList()};
+  }
+
+  Map<String, List<Mood>> _removeMoodFromDailyMap(Map<String, List<Mood>> source, String moodId) {
+    final updated = <String, List<Mood>>{};
+    for (final entry in source.entries) {
+      final filtered = entry.value.where((mood) => mood.id != moodId).toList();
+      if (filtered.isNotEmpty) {
+        updated[entry.key] = filtered;
+      }
+    }
+    return updated;
+  }
+
+  Future<void> _persistDailyMoodKeys(Iterable<String> keys, Map<String, List<Mood>> dailyMoodsMap) async {
+    for (final key in keys.toSet()) {
+      await _dayRepo.setMoods(_dateFromKey(key), dailyMoodsMap[key] ?? const []);
+    }
+  }
+
+  DateTime _dateFromKey(String key) {
+    final parts = key.split('-');
+    if (parts.length != 3) return DateTime.now();
+    return DateTime(int.tryParse(parts[0]) ?? DateTime.now().year, int.tryParse(parts[1]) ?? DateTime.now().month, int.tryParse(parts[2]) ?? DateTime.now().day);
   }
 
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);

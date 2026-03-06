@@ -132,7 +132,7 @@ class _CompactDayCell extends StatelessWidget {
   final bool isToday;
   final bool hasEntries;
   final int? rating;
-  final List<String> moods;
+  final List<Mood> moods;
 
   const _CompactDayCell({required this.date, required this.isCurrentMonth, required this.isToday, required this.hasEntries, this.rating, this.moods = const []});
 
@@ -166,7 +166,7 @@ class _CompactDayCell extends StatelessWidget {
 
     final fg = isCurrentMonth ? theme.textTheme.bodySmall?.color : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.3);
 
-    final moodEmojis = moods.map((name) => Mood.fromString(name)?.emoji).whereType<String>().toList();
+    final moodEmojis = moods.map((mood) => mood.emoji).toList();
     final displayEmojis = moodEmojis.take(9).toList();
     const maxEmojisPerRow = 3;
     final emojiRows = <MapEntry<String, double>>[];

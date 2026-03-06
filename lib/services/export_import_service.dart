@@ -10,7 +10,9 @@ import 'package:video_diary/features/settings/model/settings.dart';
 
 import '../features/diary/data/day_data_repository.dart';
 import '../features/diary/data/diary_repository.dart';
+import '../features/diary/data/mood_repository.dart';
 import '../features/diary/model/diary_entry.dart';
+import '../features/diary/model/mood.dart';
 
 class ExportImportService {
   static const int _exportVersion = 2;
@@ -25,6 +27,7 @@ class ExportImportService {
 
   final DiaryRepository _diaryRepo = DiaryRepository();
   final DayDataRepository _dayRepo = DayDataRepository();
+  final MoodRepository _moodRepo = MoodRepository();
   final SettingsRepository _settingsRepo = SettingsRepository();
 
   /// Export ALL data as a ZIP: metadata + videos + thumbnails + settings + day data.
@@ -44,6 +47,7 @@ class ExportImportService {
       final dayData = await _dayRepo.getAll();
 
       final SettingsModel settings = await _settingsRepo.load();
+      final moods = await _moodRepo.load();
 
       final prefs = await SharedPreferences.getInstance();
       final prefsData = <String, dynamic>{_prefCameraLensKey: prefs.getString(_prefCameraLensKey), _prefRecordedVideoCountKey: prefs.getInt(_prefRecordedVideoCountKey), _prefReviewCompletedKey: prefs.getBool(_prefReviewCompletedKey)};
@@ -90,6 +94,7 @@ class ExportImportService {
         'totalVideos': entries.length,
         'videos': exportedEntries,
         'dayData': {for (final e in dayData.entries) e.key: e.value.toJson()},
+        'moodCatalog': moods.map((mood) => mood.toJson()).toList(),
         'settings': settings.toJson(),
         'prefs': prefsData,
       };
@@ -171,6 +176,21 @@ class ExportImportService {
       }).toList();
 
       importedEntries.sort((a, b) => b.date.compareTo(a.date));
+
+      final currentMoodCatalog = await _moodRepo.load();
+      final importedMoodCatalog = (meta['moodCatalog'] as List<dynamic>?)?.map(Mood.fromDynamic).whereType<Mood>().toList() ?? <Mood>[];
+
+      final mergedMoodCatalog = <Mood>[
+        if (!replaceExisting) ...currentMoodCatalog,
+        ...importedMoodCatalog,
+        for (final entry in importedEntries)
+          for (final mood in entry.moods ?? const <Mood>[])
+            if (![...(!replaceExisting ? currentMoodCatalog : const <Mood>[]), ...importedMoodCatalog].any((existing) => existing.id == mood.id)) mood,
+      ];
+
+      if (mergedMoodCatalog.isNotEmpty) {
+        await _moodRepo.save(mergedMoodCatalog);
+      }
 
       if (replaceExisting) {
         await _diaryRepo.save(importedEntries);

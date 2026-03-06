@@ -36,7 +36,7 @@ class DiaryEntry {
     title: json['title'] as String?,
     description: json['description'] as String?,
     rating: (json['rating'] as num?)?.toInt(),
-    moods: (json['moods'] as List<dynamic>?)?.map((e) => Mood.fromString(e as String)).whereType<Mood>().toList(),
+    moods: (json['moods'] as List<dynamic>?)?.map(Mood.fromDynamic).whereType<Mood>().toList(),
     lensDirection: json['lensDirection'] as String?,
   );
 }

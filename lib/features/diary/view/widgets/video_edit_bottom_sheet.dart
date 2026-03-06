@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 import '../../model/mood.dart';
+import '../../viewmodel/diary_view_model.dart';
+import '../../../settings/view/widgets/mood_management_bottom_sheet.dart';
 import 'mood_chip.dart';
 import 'star_rating_bar.dart';
 
@@ -56,6 +59,32 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
 
   Map<String, dynamic> _getResult() {
     return {'title': _titleController.text.trim(), 'description': _descriptionController.text.trim(), 'rating': _rating == 0 ? null : _rating, 'moods': _selectedMoods.toList(), if (kDebugMode) 'date': _selectedDate};
+  }
+
+  Future<void> _editMood(Mood mood) async {
+    final updated = await showMoodEditorBottomSheet(context, mood: mood);
+    if (!updated || !mounted || !_selectedMoods.any((selected) => selected.id == mood.id)) {
+      return;
+    }
+
+    Mood? refreshedMood;
+    for (final item in context.read<DiaryViewModel>().availableMoods) {
+      if (item.id == mood.id) {
+        refreshedMood = item;
+        break;
+      }
+    }
+
+    if (refreshedMood == null) {
+      return;
+    }
+
+    final updatedMood = refreshedMood;
+
+    setState(() {
+      _selectedMoods.removeWhere((selected) => selected.id == mood.id);
+      _selectedMoods.add(updatedMood);
+    });
   }
 
   Future<bool> _showDiscardDialog() async {
@@ -163,6 +192,8 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
   }
 
   Widget _buildContent(ThemeData theme, bool isDark, Color cardColor, Color subtleColor, Color textColor, Color subtleTextColor) {
+    final moods = context.watch<DiaryViewModel>().availableMoods;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
       child: Column(
@@ -230,27 +261,42 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
 
           // Mood section
           _buildSectionLabel('Mood', textColor),
+          const SizedBox(height: 6),
+          Text('Tap to select. Long press to edit.', style: TextStyle(fontSize: 12, color: subtleTextColor, height: 1.3)),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: Mood.values.map((mood) {
-              final isSelected = _selectedMoods.contains(mood);
-              return MoodChip(
-                mood: mood,
-                isSelected: isSelected,
-                onTap: () {
-                  setState(() {
-                    if (isSelected) {
-                      _selectedMoods.remove(mood);
-                    } else {
-                      _selectedMoods.add(mood);
-                    }
-                  });
-                },
-              );
-            }).toList(),
-          ),
+          if (moods.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: subtleColor),
+              ),
+              child: Text('No moods yet. Add one from Settings.', style: TextStyle(fontSize: 14, color: subtleTextColor)),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: moods.map((mood) {
+                final isSelected = _selectedMoods.any((selected) => selected.id == mood.id);
+                return MoodChip(
+                  mood: mood,
+                  isSelected: isSelected,
+                  onTap: () {
+                    setState(() {
+                      if (isSelected) {
+                        _selectedMoods.removeWhere((selected) => selected.id == mood.id);
+                      } else {
+                        _selectedMoods.add(mood);
+                      }
+                    });
+                  },
+                  onLongPress: () => _editMood(mood),
+                );
+              }).toList(),
+            ),
         ],
       ),
     );

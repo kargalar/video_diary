@@ -15,7 +15,7 @@ class VideoDiaryApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => SettingsViewModel(sl.settingsRepository, sl.notificationService)..load()),
-        ChangeNotifierProvider(create: (_) => DiaryViewModel(sl.diaryRepository, sl.settingsRepository, sl.dayDataRepository, sl.notificationService)),
+        ChangeNotifierProvider(create: (_) => DiaryViewModel(sl.diaryRepository, sl.settingsRepository, sl.dayDataRepository, sl.moodRepository, sl.notificationService)),
         ChangeNotifierProvider(create: (_) => RecordViewModel(sl.videoService, sl.settingsRepository, sl.storageService)),
       ],
       child: Consumer<SettingsViewModel>(

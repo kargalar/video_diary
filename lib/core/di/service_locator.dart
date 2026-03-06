@@ -1,5 +1,6 @@
 import '../../features/diary/data/day_data_repository.dart';
 import '../../features/diary/data/diary_repository.dart';
+import '../../features/diary/data/mood_repository.dart';
 import '../../features/settings/data/settings_repository.dart';
 import '../../services/notification_service.dart';
 import '../../services/storage_service.dart';
@@ -16,6 +17,7 @@ class ServiceLocator {
   late final StorageService storageService;
   late final VideoService videoService;
   late final DayDataRepository dayDataRepository;
+  late final MoodRepository moodRepository;
   late final NotificationService notificationService;
 
   Future<void> setup() async {
@@ -24,9 +26,11 @@ class ServiceLocator {
     storageService = StorageService();
     videoService = VideoService();
     dayDataRepository = DayDataRepository();
+    moodRepository = MoodRepository();
     notificationService = NotificationService();
 
     await dayDataRepository.init();
+    await moodRepository.init();
     await notificationService.init();
   }
 }
