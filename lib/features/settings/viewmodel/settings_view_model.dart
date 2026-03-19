@@ -15,7 +15,12 @@ class SettingsViewModel extends ChangeNotifier {
   SettingsModel get state => _state;
   SettingsRepository get repo => _repo;
 
-  SettingsViewModel(this._repo, this._notifier);
+  SettingsViewModel(this._repo, this._notifier) {
+    _repo.onSettingsChanged.listen((newSettings) {
+      _state = newSettings;
+      notifyListeners();
+    });
+  }
 
   Future<void> load() async {
     _state = await _repo.load();

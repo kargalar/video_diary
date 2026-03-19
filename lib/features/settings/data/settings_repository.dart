@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../model/settings.dart';
@@ -5,6 +6,9 @@ import '../model/settings.dart';
 class SettingsRepository {
   static const _boxName = 'settings';
   bool _inited = false;
+
+  final _settingsStreamController = StreamController<SettingsModel>.broadcast();
+  Stream<SettingsModel> get onSettingsChanged => _settingsStreamController.stream;
 
   Future<void> init() async {
     if (_inited) return;
@@ -25,5 +29,6 @@ class SettingsRepository {
     await init();
     final box = Hive.box(_boxName);
     await box.put('settings', settings.toJson());
+    _settingsStreamController.add(settings);
   }
 }

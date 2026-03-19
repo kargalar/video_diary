@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -121,10 +122,10 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
   Future<void> _handleImport() async {
     try {
       // Step 1: Ask user to select ZIP backup
-      const typeGroup = XTypeGroup(label: 'ZIP', extensions: <String>['zip']);
-      final file = await openFile(acceptedTypeGroups: <XTypeGroup>[typeGroup]);
+      final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: const <String>['zip'], allowMultiple: false, withData: false, withReadStream: true);
 
-      if (file == null) return;
+      if (result == null || result.files.isEmpty) return;
+      final selectedFile = result.files.single;
 
       // Step 2: Show warning dialog FIRST
       if (!mounted) return;
@@ -171,7 +172,7 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
         setState(() => _isLoading = true);
       }
 
-      final zipFile = File(file.path);
+      final zipFile = await _resolveSelectedZip(selectedFile);
       final importedCount = await _service.importData(zipFile, restoreDirPath, replaceExisting: true);
 
       if (mounted) {
@@ -197,6 +198,44 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<File> _resolveSelectedZip(PlatformFile selected) async {
+    final selectedPath = selected.path;
+    if (selectedPath != null && selectedPath.isNotEmpty && !selectedPath.startsWith('content://')) {
+      final existing = File(selectedPath);
+      if (await existing.exists()) {
+        return existing;
+      }
+    }
+
+    // Some Android SAF providers expose only a content URI. Stream to temp file.
+    final safeName = selected.name.isEmpty ? 'import_backup.zip' : selected.name;
+    final tempFile = File('${Directory.systemTemp.path}${Platform.pathSeparator}$safeName');
+    await tempFile.parent.create(recursive: true);
+    if (await tempFile.exists()) {
+      await tempFile.delete();
+    }
+
+    final stream = selected.readStream;
+    if (stream == null) {
+      throw Exception('Selected backup file stream is unavailable.');
+    }
+
+    final sink = tempFile.openWrite();
+    try {
+      await for (final chunk in stream) {
+        sink.add(chunk);
+      }
+    } finally {
+      await sink.close();
+    }
+
+    if (!await tempFile.exists()) {
+      throw Exception('Selected backup file could not be accessed.');
+    }
+
+    return tempFile;
   }
 
   Future<void> _handleClearAll() async {
