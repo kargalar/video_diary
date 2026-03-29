@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:device_info_plus/device_info_plus.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -52,19 +52,11 @@ class RecordViewModel extends ChangeNotifier {
     final cameraStatus = await Permission.camera.request();
     final micStatus = await Permission.microphone.request();
 
-    if (Platform.isAndroid) {
-      final androidInfo = await DeviceInfoPlugin().androidInfo;
-      if (androidInfo.version.sdkInt >= 33) {
-        final videoStatus = await Permission.videos.request();
-        return cameraStatus.isGranted && micStatus.isGranted && videoStatus.isGranted;
-      }
-    }
-
     return cameraStatus.isGranted && micStatus.isGranted;
   }
 
   /// Prepares the file path for recording and updates state to recording.
-  Future<String?> prepareRecording() async {
+  Future<String?> prepareRecording({required Future<bool> Function() onRequireStorageLocation}) async {
     final hasPermissions = await requestAndCheckPermissions();
     if (!hasPermissions) {
       _updateState(_state.copyWith(hasPermission: false, errorMessage: 'Required permissions not granted.'));
@@ -72,14 +64,19 @@ class RecordViewModel extends ChangeNotifier {
     }
 
     var settings = await _settingsRepo.load();
-    final base = settings.storageDirectory ?? (await _storageService.pickDirectory());
+    String? base = settings.storageDirectory;
 
     if (base == null) {
-      _updateState(_state.copyWith(errorMessage: 'Storage location not selected.'));
-      return null;
-    }
-
-    if (settings.storageDirectory == null) {
+      final proceed = await onRequireStorageLocation();
+      if (!proceed) {
+        _updateState(_state.copyWith(errorMessage: 'Storage location not selected.'));
+        return null;
+      }
+      base = await _storageService.pickDirectory();
+      if (base == null) {
+        _updateState(_state.copyWith(errorMessage: 'Storage location not selected.'));
+        return null;
+      }
       settings = settings.copyWith(storageDirectory: base);
       await _settingsRepo.save(settings);
     }

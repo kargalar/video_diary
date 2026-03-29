@@ -2,6 +2,8 @@ import 'package:camerawesome/camerawesome_plugin.dart';
 import 'package:camerawesome/pigeon.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
+import 'package:sensors_plus/sensors_plus.dart';
 
 import '../../../core/widgets/swipe_to_pop.dart';
 import '../viewmodel/diary_view_model.dart';
@@ -19,11 +21,107 @@ class RecordingPage extends StatefulWidget {
 class _RecordingPageState extends State<RecordingPage> {
   bool _isStopping = false;
   CameraState? _cameraState;
+  BuildContext? _landscapeDialogContext;
+  StreamSubscription? _accelSubscription;
+  bool _isLandscapeDetected = false;
 
   @override
   void initState() {
     super.initState();
     _initPreferences();
+    
+    _accelSubscription = accelerometerEventStream().listen((event) {
+      if (!mounted) return;
+      
+      // If phone is mostly upright
+      if (event.y.abs() > 6.0) {
+        if (_isLandscapeDetected || _landscapeDialogContext == null) {
+          _isLandscapeDetected = false;
+          _showLandscapeWarningIfNeeded();
+        }
+      } 
+      // If phone is mostly horizontal
+      else if (event.x.abs() > 6.0) {
+        if (!_isLandscapeDetected) {
+          _isLandscapeDetected = true;
+          if (_landscapeDialogContext != null) {
+            Navigator.of(_landscapeDialogContext!).pop();
+            _landscapeDialogContext = null;
+          }
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _accelSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _showLandscapeWarningIfNeeded() {
+    if (_landscapeDialogContext != null) return; // dialog already showing
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        _landscapeDialogContext = ctx;
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C1C1E),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 900),
+                  curve: Curves.elasticOut,
+                  builder: (_, value, child) => Transform.rotate(
+                    angle: (1.0 - value) * (3.14159 / 2),
+                    child: child,
+                  ),
+                  child: const Icon(
+                    Icons.stay_primary_landscape_rounded,
+                    color: Colors.white,
+                    size: 64,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Rotate Your Phone',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'For best results, hold your phone horizontally (landscape mode) while recording.',
+                  style: TextStyle(
+                    color: Colors.white.withAlpha(178),
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        );
+      },
+    ).whenComplete(() {
+      _landscapeDialogContext = null;
+    });
   }
 
   Future<void> _initPreferences() async {
@@ -205,7 +303,27 @@ class _RecordingPageState extends State<RecordingPage> {
                 _cameraState!.when(
                   onVideoMode: (videoState) async {
                     try {
-                      final path = await vm.prepareRecording();
+                      final path = await vm.prepareRecording(
+                        onRequireStorageLocation: () async {
+                          return await showDialog<bool>(
+                            context: context,
+                            builder: (c) => AlertDialog(
+                              title: const Text('Recording Location'),
+                              content: const Text('Before you continue, you need to select a folder where your videos will be safely stored.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(c, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(c, true),
+                                  child: const Text('Select Folder'),
+                                ),
+                              ],
+                            ),
+                          ) ?? false;
+                        },
+                      );
                       if (path == null) return;
                       await videoState.startRecording();
                       if (mounted) setState(() {});

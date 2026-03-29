@@ -75,16 +75,20 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
       }
     }
 
-    if (refreshedMood == null) {
-      return;
-    }
-
-    final updatedMood = refreshedMood;
-
     setState(() {
       _selectedMoods.removeWhere((selected) => selected.id == mood.id);
-      _selectedMoods.add(updatedMood);
+      if (refreshedMood != null) {
+        _selectedMoods.add(refreshedMood);
+      }
     });
+  }
+
+  Future<void> _addMood() async {
+    final added = await showMoodEditorBottomSheet(context);
+    // After adding, we don't automatically select it, but we let the UI rebuild to show it in the list.
+    if (added && mounted) {
+      setState(() {});
+    }
   }
 
   Future<bool> _showDiscardDialog() async {
@@ -264,22 +268,11 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
           const SizedBox(height: 6),
           Text('Tap to select. Long press to edit.', style: TextStyle(fontSize: 12, color: subtleTextColor, height: 1.3)),
           const SizedBox(height: 10),
-          if (moods.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: subtleColor),
-              ),
-              child: Text('No moods yet. Add one from Settings.', style: TextStyle(fontSize: 14, color: subtleTextColor)),
-            )
-          else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: moods.map((mood) {
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ...moods.map((mood) {
                 final isSelected = _selectedMoods.any((selected) => selected.id == mood.id);
                 return MoodChip(
                   mood: mood,
@@ -295,9 +288,40 @@ class _VideoEditBottomSheetState extends State<VideoEditBottomSheet> {
                   },
                   onLongPress: () => _editMood(mood),
                 );
-              }).toList(),
-            ),
+              }),
+              _buildAddMoodButton(isDark),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAddMoodButton(bool isDark) {
+    final bgColor = isDark ? Colors.white.withAlpha(8) : const Color(0xFFF0F0F0);
+    final borderColor = isDark ? Colors.white.withAlpha(15) : Colors.transparent;
+    final iconColor = isDark ? Colors.grey[400]! : Colors.grey[700]!;
+
+    return GestureDetector(
+      onTap: _addMood,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: borderColor, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add, size: 18, color: iconColor),
+            const SizedBox(width: 4),
+            Text(
+              'New',
+              style: TextStyle(color: iconColor, fontWeight: FontWeight.w500, fontSize: 13, letterSpacing: 0.2),
+            ),
+          ],
+        ),
       ),
     );
   }

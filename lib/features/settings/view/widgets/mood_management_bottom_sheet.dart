@@ -120,6 +120,11 @@ Future<bool> showMoodEditorBottomSheet(BuildContext context, {Mood? mood}) async
     return false;
   }
 
+  if (result.isDeleted && mood != null) {
+    await vm.deleteMood(mood.id);
+    return true;
+  }
+
   final ok = mood == null ? await vm.addMood(emoji: result.emoji, label: result.label) : await vm.updateMood(original: mood, emoji: result.emoji, label: result.label);
 
   if (!ok && context.mounted) {
@@ -130,10 +135,11 @@ Future<bool> showMoodEditorBottomSheet(BuildContext context, {Mood? mood}) async
 }
 
 class _MoodEditorResult {
-  const _MoodEditorResult({required this.emoji, required this.label});
+  const _MoodEditorResult({required this.emoji, required this.label, this.isDeleted = false});
 
   final String emoji;
   final String label;
+  final bool isDeleted;
 }
 
 class _MoodEditorSheet extends StatefulWidget {
@@ -240,6 +246,20 @@ class _MoodEditorSheetState extends State<_MoodEditorSheet> {
                           ],
                         ),
                       ),
+                      if (_isEditing)
+                        IconButton(
+                          tooltip: 'Delete mood',
+                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (dialogContext) => _DeleteMoodDialog(mood: widget.mood!),
+                            );
+                            if (confirm == true && context.mounted) {
+                              Navigator.of(context).pop(const _MoodEditorResult(emoji: '', label: '', isDeleted: true));
+                            }
+                          },
+                        ),
                     ],
                   ),
                   const SizedBox(height: 18),
