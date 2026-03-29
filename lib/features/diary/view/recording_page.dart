@@ -24,6 +24,7 @@ class _RecordingPageState extends State<RecordingPage> {
   BuildContext? _landscapeDialogContext;
   StreamSubscription? _accelSubscription;
   bool _isLandscapeDetected = false;
+  bool _isDialogShowing = false;
 
   @override
   void initState() {
@@ -59,16 +60,29 @@ class _RecordingPageState extends State<RecordingPage> {
     super.dispose();
   }
 
+  void _dismissLandscapeDialog() {
+    _accelSubscription?.cancel();
+    _accelSubscription = null;
+    if (_landscapeDialogContext != null) {
+      Navigator.of(_landscapeDialogContext!).pop();
+      _landscapeDialogContext = null;
+      _isDialogShowing = false;
+    }
+  }
+
   void _showLandscapeWarningIfNeeded() {
-    if (_landscapeDialogContext != null) return; // dialog already showing
+    if (_isDialogShowing) return; // dialog already showing or requested
+    _isDialogShowing = true;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
         _landscapeDialogContext = ctx;
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
+        return PopScope(
+          canPop: false,
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
             padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
               color: const Color(0xFF1C1C1E),
@@ -117,9 +131,10 @@ class _RecordingPageState extends State<RecordingPage> {
               ],
             ),
           ),
-        );
+        ));
       },
     ).whenComplete(() {
+      _isDialogShowing = false;
       _landscapeDialogContext = null;
     });
   }
@@ -154,12 +169,14 @@ class _RecordingPageState extends State<RecordingPage> {
             await recordingState.stopRecording();
             vm.setReady();
             if (!mounted) return;
+            _dismissLandscapeDialog();
             Navigator.of(context).pop();
           },
         );
       }
     } else {
       if (!mounted) return;
+      _dismissLandscapeDialog();
       Navigator.of(context).pop();
     }
   }
@@ -225,6 +242,7 @@ class _RecordingPageState extends State<RecordingPage> {
                 }
                 setState(() => _isStopping = false);
                 if (mounted) {
+                  _dismissLandscapeDialog();
                   // ignore: use_build_context_synchronously
                   Navigator.of(context).pop(entry?.path);
                 }
