@@ -69,6 +69,15 @@ class _PlayerPageState extends State<PlayerPage> {
     _startHideTimer();
   }
 
+  void _toggleControls() {
+    if (_showControls) {
+      _hideTimer?.cancel();
+      setState(() => _showControls = false);
+    } else {
+      _showControlsTemporarily();
+    }
+  }
+
   @override
   void dispose() {
     _hideTimer?.cancel();
@@ -116,7 +125,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 : _controller == null
                 ? const Center(child: CircularProgressIndicator())
                 : GestureDetector(
-                    onTap: _showControlsTemporarily,
+                    onTap: _toggleControls,
                     child: Stack(
                       children: [
                         Positioned.fill(
@@ -194,17 +203,21 @@ class _PlayerPageState extends State<PlayerPage> {
                                 Material(
                                   color: Colors.transparent,
                                   shape: const CircleBorder(),
-                                  child: IconButton(
-                                    icon: Icon(_controller!.value.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
-                                    iconSize: 56,
-                                    onPressed: () async {
-                                      if (_controller!.value.isPlaying) {
-                                        await _controller!.pause();
-                                      } else {
-                                        await _controller!.play();
-                                      }
-                                      setState(() {});
-                                      _showControlsTemporarily();
+                                  child: ValueListenableBuilder<VideoPlayerValue>(
+                                    valueListenable: _controller!,
+                                    builder: (context, value, child) {
+                                      return IconButton(
+                                        icon: Icon(value.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
+                                        iconSize: 56,
+                                        onPressed: () async {
+                                          if (value.isPlaying) {
+                                            await _controller!.pause();
+                                          } else {
+                                            await _controller!.play();
+                                          }
+                                          _showControlsTemporarily();
+                                        },
+                                      );
                                     },
                                   ),
                                 ),
@@ -298,6 +311,7 @@ class _Controls extends StatefulWidget {
 class _ControlsState extends State<_Controls> {
   double _sliderValue = 0;
   bool _seeking = false;
+  bool _wasPlayingBeforeSeek = false;
 
   @override
   void initState() {
@@ -350,12 +364,19 @@ class _ControlsState extends State<_Controls> {
                 inactiveColor: Colors.white38,
                 onChangeStart: (_) {
                   setState(() => _seeking = true);
+                  _wasPlayingBeforeSeek = widget.controller.value.isPlaying;
+                  if (_wasPlayingBeforeSeek) {
+                    widget.controller.pause();
+                  }
                   widget.onInteraction();
                 },
                 onChanged: (v) => setState(() => _sliderValue = v),
                 onChangeEnd: (v) async {
                   final target = Duration(milliseconds: (duration.inMilliseconds * v).round());
                   await widget.controller.seekTo(target);
+                  if (_wasPlayingBeforeSeek) {
+                    await widget.controller.play();
+                  }
                   setState(() => _seeking = false);
                   widget.onInteraction();
                 },

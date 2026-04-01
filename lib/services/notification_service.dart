@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -62,8 +63,24 @@ class NotificationService {
     final now = tz.TZDateTime.now(tz.local);
     int scheduledCount = 0;
 
+    // Check if a video was already recorded today
+    final prefs = await SharedPreferences.getInstance();
+    final lastRecordedDayStr = prefs.getString('last_recorded_day');
+    bool skipToday = false;
+    if (lastRecordedDayStr != null) {
+      final lastRecordedDay = DateTime.tryParse(lastRecordedDayStr);
+      if (lastRecordedDay != null) {
+        if (lastRecordedDay.year == now.year && lastRecordedDay.month == now.month && lastRecordedDay.day == now.day) {
+          skipToday = true;
+        }
+      }
+    }
+
     // Schedule notifications for the next 7 days
     for (int i = 0; i < 7; i++) {
+      if (i == 0 && skipToday) {
+        continue;
+      }
       var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
       scheduled = scheduled.add(Duration(days: i));
 
@@ -103,6 +120,11 @@ class NotificationService {
     } else {
       await cancelAll();
     }
+  }
+
+  /// Cancels the notification scheduled for today (ID `1001`)
+  Future<void> cancelTodayNotification() async {
+    await _plugin.cancel(1001);
   }
 
   Future<void> cancelAll() => _plugin.cancelAll();

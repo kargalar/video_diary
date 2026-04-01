@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../services/notification_service.dart';
 import '../../settings/data/settings_repository.dart';
@@ -79,6 +80,9 @@ class DiaryViewModel extends ChangeNotifier {
     _recomputeDailyAverageForDay(normalized.date);
     _recomputeDailyMoodsForDay(normalized.date);
     _recomputeStreak();
+
+    // Cancel today's notification since user just recorded
+    _notificationService.cancelTodayNotification();
   }
 
   Future<bool> addMood({required String emoji, required String label}) async {
@@ -332,6 +336,8 @@ class DiaryViewModel extends ChangeNotifier {
       _updateState(_state.copyWith(status: DiaryStatus.success, entries: const [], dailyRatings: const {}, dailyMoods: const {}, currentStreak: 0, maxStreak: 0, lastRecordedDay: null));
       await _repo.save([]);
       await _dayRepo.clearAll();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('last_recorded_day');
       return true;
     } catch (_) {
       return false;
@@ -341,6 +347,7 @@ class DiaryViewModel extends ChangeNotifier {
   void _recomputeStreak() {
     if (_state.entries.isEmpty) {
       _updateState(_state.copyWith(currentStreak: 0, maxStreak: 0, lastRecordedDay: null));
+      SharedPreferences.getInstance().then((prefs) => prefs.remove('last_recorded_day'));
       return;
     }
 
@@ -391,6 +398,10 @@ class DiaryViewModel extends ChangeNotifier {
     if (run > best) best = run;
 
     _updateState(_state.copyWith(currentStreak: cur, maxStreak: best, lastRecordedDay: lastRecordedDay));
+
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setString('last_recorded_day', lastRecordedDay.toIso8601String());
+    });
   }
 
   Future<void> _recomputeDailyAverageForDay(DateTime day) async {
