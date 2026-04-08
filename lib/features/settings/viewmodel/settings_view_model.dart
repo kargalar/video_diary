@@ -32,15 +32,6 @@ class SettingsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> pickDirectory() async {
-    final selected = await _storage.pickDirectory(initialDirectory: state.storageDirectory);
-    if (selected != null) {
-      _state = _state.copyWith(storageDirectory: selected);
-      await _repo.save(_state);
-    }
-    notifyListeners();
-  }
-
   Future<void> setReminder(int hour, int minute) async {
     _state = _state.copyWith(reminderHour: hour, reminderMinute: minute);
     await _repo.save(_state);

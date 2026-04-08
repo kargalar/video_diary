@@ -14,6 +14,21 @@ class DiaryEntry {
 
   DiaryEntry({required this.path, required this.date, this.thumbnailPath, this.durationMs, this.fileBytes, this.title, this.description, this.rating, this.moods, this.lensDirection});
 
+  DiaryEntry copyWith({String? path, DateTime? date, String? thumbnailPath, int? durationMs, int? fileBytes, String? title, String? description, int? rating, List<Mood>? moods, String? lensDirection}) {
+    return DiaryEntry(
+      path: path ?? this.path,
+      date: date ?? this.date,
+      thumbnailPath: thumbnailPath ?? this.thumbnailPath,
+      durationMs: durationMs ?? this.durationMs,
+      fileBytes: fileBytes ?? this.fileBytes,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      rating: rating ?? this.rating,
+      moods: moods ?? this.moods,
+      lensDirection: lensDirection ?? this.lensDirection,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
     'path': path,
     'date': date.toIso8601String(),

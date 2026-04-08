@@ -100,25 +100,6 @@ class SettingsPage extends StatelessWidget {
           _buildSection(context, [
             _buildTile(
               context: context,
-              icon: Icons.folder_rounded,
-              iconColor: Colors.blueAccent,
-              title: 'Storage Folder',
-              subtitle: state.storageDirectory ?? 'Not selected',
-              trailing: ElevatedButton(
-                onPressed: vm.pickDirectory,
-                style: ElevatedButton.styleFrom(
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  minimumSize: const Size(60, 32),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  backgroundColor: isDark ? Colors.white12 : Colors.black12,
-                  foregroundColor: isDark ? Colors.white : Colors.black,
-                ),
-                child: const Text('Select', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              ),
-            ),
-            _buildTile(
-              context: context,
               icon: Icons.notifications_active_rounded,
               iconColor: Colors.orangeAccent,
               title: 'Daily Reminder',

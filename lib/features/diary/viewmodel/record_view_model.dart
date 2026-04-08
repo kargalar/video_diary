@@ -51,6 +51,11 @@ class RecordViewModel extends ChangeNotifier {
   Future<bool> requestAndCheckPermissions() async {
     final cameraStatus = await Permission.camera.request();
     final micStatus = await Permission.microphone.request();
+    // Add backward compatibility for reading old external files if they haven't been picked up by the background migration yet (or if migration is ongoing).
+    await Permission.videos.request();
+    await Permission.photos.request();
+    // For Android 10 and below, READ_EXTERNAL_STORAGE helps.
+    await Permission.storage.request();
 
     return cameraStatus.isGranted && micStatus.isGranted;
   }
@@ -63,25 +68,7 @@ class RecordViewModel extends ChangeNotifier {
       return null;
     }
 
-    var settings = await _settingsRepo.load();
-    String? base = settings.storageDirectory;
-
-    if (base == null) {
-      final proceed = await onRequireStorageLocation();
-      if (!proceed) {
-        _updateState(_state.copyWith(errorMessage: 'Storage location not selected.'));
-        return null;
-      }
-      base = await _storageService.pickDirectory();
-      if (base == null) {
-        _updateState(_state.copyWith(errorMessage: 'Storage location not selected.'));
-        return null;
-      }
-      settings = settings.copyWith(storageDirectory: base);
-      await _settingsRepo.save(settings);
-    }
-
-    final dir = await _storageService.ensureDiaryFolder(base);
+    final dir = await _storageService.getInternalDiaryFolder();
     final filename = _fileNameFor(DateTime.now());
     final filePath = '${dir.path}${Platform.pathSeparator}videos${Platform.pathSeparator}$filename';
 
@@ -97,14 +84,7 @@ class RecordViewModel extends ChangeNotifier {
   Future<DiaryEntry?> onVideoSaved(String savedFilePath) async {
     _updateState(_state.copyWith(status: RecordStatus.saving));
     try {
-      var settings = await _settingsRepo.load();
-      final base = settings.storageDirectory ?? (await _storageService.pickDirectory());
-
-      if (base == null) {
-        throw Exception('Storage location not selected.');
-      }
-
-      final dir = await _storageService.ensureDiaryFolder(base);
+      final dir = await _storageService.getInternalDiaryFolder();
       final targetPath = _state.videoPath!;
 
       // Move file from CamerAwesome output to our target path

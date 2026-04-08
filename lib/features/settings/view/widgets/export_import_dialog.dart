@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../features/diary/viewmodel/diary_view_model.dart';
-import '../../../../features/settings/viewmodel/settings_view_model.dart';
 import '../../../../services/export_import_service.dart';
+import '../../../../services/storage_service.dart';
 
 class ExportImportDialog extends StatefulWidget {
   final VoidCallback onDataImported;
@@ -148,7 +148,7 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Continue & Select Restore Folder', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text('Continue & Import', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -156,16 +156,7 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
 
       if (continueImport != true) return;
 
-      // Step 3: Ask user to select restore folder
       if (!mounted) return;
-      final restoreDirPath = await getDirectoryPath();
-
-      if (restoreDirPath == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Import cancelled: Restore directory not selected'), backgroundColor: Colors.orange));
-        }
-        return;
-      }
 
       // Step 4: Perform import
       if (mounted) {
@@ -173,18 +164,12 @@ class _ExportImportDialogState extends State<ExportImportDialog> {
       }
 
       final zipFile = await _resolveSelectedZip(selectedFile);
+      final internalDir = await StorageService().getInternalDiaryFolder();
+      final restoreDirPath = internalDir.path;
+
       final importedCount = await _service.importData(zipFile, restoreDirPath, replaceExisting: true);
 
       if (mounted) {
-        // Save the selected video directory as storage directory
-        if (!mounted) return;
-        try {
-          final settingsVm = context.read<SettingsViewModel>();
-          settingsVm.setStorageDirectory(restoreDirPath);
-        } catch (e) {
-          debugPrint('⚠️ Failed to save storage directory: $e');
-        }
-
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ All old data deleted! $importedCount new videos imported'), backgroundColor: Colors.green, duration: const Duration(seconds: 4)));
         widget.onDataImported();

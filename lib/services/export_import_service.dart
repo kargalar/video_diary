@@ -218,11 +218,11 @@ class ExportImportService {
         }
       }
 
-      // Import settings. Always override storageDirectory to restoreDir.
+      // Import settings. Don't override storageDirectory so it uses internal defaults.
       final settingsRaw = meta['settings'];
       if (settingsRaw is Map) {
         final importedSettings = SettingsModel.fromJson(Map<String, dynamic>.from(settingsRaw));
-        final patched = importedSettings.copyWith(storageDirectory: restoreDir.path);
+        final patched = importedSettings.copyWith(storageDirectory: null);
         await _settingsRepo.save(patched);
       }
 

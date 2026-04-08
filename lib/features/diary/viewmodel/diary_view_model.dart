@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../services/migration_service.dart';
 import '../../../services/notification_service.dart';
 import '../../settings/data/settings_repository.dart';
 import '../data/diary_repository.dart';
@@ -34,7 +35,9 @@ class DiaryViewModel extends ChangeNotifier {
   int get maxStreak => _state.maxStreak;
   DateTime? get lastRecordedDay => _state.lastRecordedDay;
 
-  DiaryViewModel(this._repo, this._settingsRepo, this._dayRepo, this._moodRepo, this._notificationService);
+  DiaryViewModel(this._repo, this._settingsRepo, this._dayRepo, this._moodRepo, this._notificationService) {
+    MigrationService.onDataMigrated = load;
+  }
 
   void _updateState(DiaryState newState) {
     _state = newState;

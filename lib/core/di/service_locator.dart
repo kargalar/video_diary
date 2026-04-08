@@ -2,6 +2,7 @@ import '../../features/diary/data/day_data_repository.dart';
 import '../../features/diary/data/diary_repository.dart';
 import '../../features/diary/data/mood_repository.dart';
 import '../../features/settings/data/settings_repository.dart';
+import '../../services/migration_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/video_service.dart';
@@ -32,6 +33,10 @@ class ServiceLocator {
     await dayDataRepository.init();
     await moodRepository.init();
     await notificationService.init();
+
+    // Run silent migration in the background
+    final migrationService = MigrationService(diaryRepository, settingsRepository, storageService, videoService);
+    migrationService.runSilentMigration();
   }
 }
 
