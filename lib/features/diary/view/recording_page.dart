@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/widgets/swipe_to_pop.dart';
 import '../viewmodel/diary_view_model.dart';
@@ -29,6 +30,7 @@ class _RecordingPageState extends State<RecordingPage> {
   @override
   void initState() {
     super.initState();
+    WakelockPlus.enable();
     _initPreferences();
     
     _accelSubscription = accelerometerEventStream().listen((event) {
@@ -56,6 +58,7 @@ class _RecordingPageState extends State<RecordingPage> {
 
   @override
   void dispose() {
+    WakelockPlus.disable();
     _accelSubscription?.cancel();
     super.dispose();
   }
