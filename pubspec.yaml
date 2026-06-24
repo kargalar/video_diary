@@ -72,3 +72,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo/
+
+dependency_overrides:
+  camerawesome:
+    path: packages/camerawesome_local

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:video_thumbnail/video_thumbnail.dart' as vt;
 
 import '../../../services/storage_service.dart';
@@ -77,6 +78,31 @@ class RecordViewModel extends ChangeNotifier {
 
     _recordingStartedAt = DateTime.now();
     _updateState(_state.copyWith(status: RecordStatus.recording, videoPath: filePath));
+
+    if (Platform.isAndroid) {
+      final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+      await flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.startForegroundService(
+            888,
+            'Video Recording',
+            'Recording in progress...',
+            notificationDetails: const AndroidNotificationDetails(
+              'recording_channel',
+              'Recording Channel',
+              channelDescription: 'Ongoing recording notification',
+              importance: Importance.low,
+              priority: Priority.low,
+              ongoing: true,
+              icon: '@mipmap/ic_launcher',
+            ),
+            foregroundServiceTypes: {
+              AndroidServiceForegroundType.foregroundServiceTypeCamera,
+              AndroidServiceForegroundType.foregroundServiceTypeMicrophone,
+            },
+          );
+    }
+
     return filePath;
   }
 
@@ -103,10 +129,26 @@ class RecordViewModel extends ChangeNotifier {
 
       _updateState(_state.copyWith(status: RecordStatus.ready, videoPath: null));
       _recordingStartedAt = null;
+
+      if (Platform.isAndroid) {
+        final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+        await flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            ?.stopForegroundService();
+      }
+
       return entry;
     } catch (e) {
       _updateState(_state.copyWith(status: RecordStatus.error, errorMessage: e.toString(), videoPath: null));
       _recordingStartedAt = null;
+
+      if (Platform.isAndroid) {
+        final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+        await flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            ?.stopForegroundService();
+      }
+
       return null;
     }
   }
@@ -116,9 +158,16 @@ class RecordViewModel extends ChangeNotifier {
     _updateState(_state.copyWith(status: RecordStatus.recording));
   }
 
-  void setReady() {
+  void setReady() async {
     _recordingStartedAt = null;
     _updateState(_state.copyWith(status: RecordStatus.ready, videoPath: null));
+
+    if (Platform.isAndroid) {
+      final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+      await flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.stopForegroundService();
+    }
   }
 
   String _fileNameFor(DateTime date) {

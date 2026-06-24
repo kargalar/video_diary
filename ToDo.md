@@ -2,3 +2,9 @@
 ○ Splash screende sadece transparan icon. Bu sayede karanlık tema sorun olmaz
 
 2 sonraki versiyonda cihaz kalsörerine erişim izileri ile ilgili şeyler ve esk videoları uygulama içine taşımakla ilgili kolar kaldırlacak. çünkü artık sadece videoalr uyuglama içine kaydedilecke.
+
+
+<!-- Kontrol et -->
+○ Camera sayfasindayken ekranın otomatik olarak kapanması i engelle (Uygulandı - WakelockPlus eklendi)
+
+Uygulamayı arkaya alınca veya yukarıdan bildirim panelini açınca bideo kaydı sonlandırılmasın arkada kayda devam etsin ve kaydın devam ettiğini söyleyen bildirim gelsin
